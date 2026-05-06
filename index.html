@@ -1,0 +1,1544 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<title>Calendar — Next Events</title>
+<style>
+  :root{
+    --bg:#0d0a08;
+    --fg:#fff4e6;
+    --muted:#a8856a;
+    --accent:#ff7a00;
+    --accent2:#ffd700;
+    --bg-active:#1f1410;
+    --bg-next:#1f1410;
+    --bg-upcoming:#1f1410;
+    --fg-active:#fff4e6;
+    --fg-next:#fff4e6;
+    --fg-upcoming:#fff4e6;
+    --radius:14px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;height:100%;background:var(--bg);color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;overflow:hidden}
+  /* Layout:
+     - Header pinned at top
+     - Upcoming pinned at bottom
+     - Next sits just above Upcoming
+     - Active sits just under Header; if absent, the space stays empty (gap)
+  */
+  body{display:grid;
+    grid-template-rows: var(--h-header) var(--h-active) var(--h-next) var(--h-upcoming);
+    grid-template-columns: var(--main-col, 1fr) var(--img-col, 0px);
+    grid-template-areas:
+      "header   header"
+      "active   active"
+      "next     image"
+      "upcoming image";
+    height:100vh;height:100dvh;padding:10px 22px 22px 22px;gap:8px}
+  .header  {grid-area:header}
+  .sec-active{grid-area:active}
+  .sec-next  {grid-area:next}
+  .sec-upcoming{grid-area:upcoming}
+  .sec-image {grid-area:image; position:relative; display:none;
+    border-radius:var(--radius); overflow:hidden;
+    background:color-mix(in oklab, var(--muted) 10%, transparent)}
+  body.has-image .sec-image{display:block}
+  /* Image column width is computed by JS from the image's natural aspect
+     ratio and the available pane height — see fitImageColumn().
+     Fallback uses --img-w (default 40%) until the image loads. */
+  body.has-image{ --img-col: var(--img-col-w, var(--img-w, 40%));
+                  --main-col: calc(100% - var(--img-col-w, var(--img-w, 40%)) - 8px); }
+  /* Auto-resize image so it fits the available space without cropping */
+  .sec-image img.evimg{width:100%;height:100%;object-fit:contain;display:block;background:transparent}
+  /* When there are no active events, keep the slot reserved (visual gap) */
+  body.no-active .sec-active{visibility:hidden}
+
+  /* HEADER */
+  .header{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px;min-height:0;padding:0 4px}
+  .hdr-left{display:flex;gap:4px;align-items:center}
+  .icon-btn{background:transparent;border:0;color:var(--muted);cursor:pointer;padding:4px;line-height:1;border-radius:8px;width:38px;height:38px;display:inline-flex;align-items:center;justify-content:center}
+  .icon-btn:hover,.icon-btn:focus{color:var(--fg);background:color-mix(in oklab,var(--muted) 18%,transparent);outline:none}
+  .icon-btn svg{width:22px;height:22px;display:block}
+  .title{font-size:clamp(26px,4.4vw,46px);font-weight:900;letter-spacing:-.02em;color:var(--accent);
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+  .title-wrap{min-width:0;display:flex}
+  .title-wrap.left{justify-content:flex-start}
+  .title-wrap.center{justify-content:center}
+  .title-wrap.right{justify-content:flex-end}
+  .clock{display:flex;flex-direction:column;align-items:flex-end;line-height:1.05;font-variant-numeric:tabular-nums;flex-shrink:0}
+  .clock .c-date{font-size:clamp(14px,1.7vw,19px);font-weight:600;color:var(--muted)}
+  .clock .c-time{font-size:clamp(18px,2.6vw,26px);font-weight:800;color:var(--fg);margin-top:2px}
+  .clock .c-time .c-day{color:var(--accent2);margin-right:6px;font-weight:700}
+
+  /* SECTIONS (shared) */
+  .section{border-radius:var(--radius);padding:10px 18px 10px 18px;display:flex;flex-direction:column;min-height:0;overflow:hidden}
+  .sec-active{background:var(--bg-active);color:var(--fg-active)}
+  .sec-next{background:var(--bg-next);color:var(--fg-next)}
+  .sec-upcoming{background:var(--bg-upcoming);color:var(--fg-upcoming)}
+  .sec-label{font-size:12px;font-weight:900;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);padding:2px 4px 10px;flex-shrink:0}
+  /* extra right padding so when the scrollbar appears the time column
+     does not sit right against it */
+  .sec-body{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;padding-right:14px}
+  .sec-body::-webkit-scrollbar{width:6px}
+  .sec-body::-webkit-scrollbar-thumb{background:color-mix(in oklab,var(--muted) 40%,transparent);border-radius:3px}
+
+  /* UPCOMING ROW — "#N  Wednesday, 28 Apr 2026   Title …  10:00 – 11:00" */
+  .up-row{display:grid;grid-template-columns:46px minmax(220px,auto) 1fr auto;align-items:center;gap:14px;padding:6px 6px;border-radius:10px;min-width:0}
+  .up-row + .up-row{margin-top:4px;border-top:1px solid color-mix(in oklab,var(--muted) 18%,transparent)}
+  .up-num{font-size:clamp(15px,1.6vw,18px);font-weight:900;color:var(--accent);font-variant-numeric:tabular-nums}
+  .up-date{font-size:clamp(13px,1.4vw,16px);font-weight:700;color:var(--accent2);white-space:nowrap;font-variant-numeric:tabular-nums}
+  .up-title{font-size:clamp(15px,1.6vw,18px);font-weight:700;color:currentColor;min-width:0;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .up-time{font-size:clamp(13px,1.4vw,16px);font-weight:800;color:currentColor;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .up-time.allday{color:var(--accent);font-size:clamp(12px,1.2vw,14px);font-weight:700}
+
+  /* 2-line time-block on the right: top = date, bottom = START → END times.
+     If event spans multiple dates, each side gets its corresponding date above the time. */
+  /* Date/time block on the right of ACTIVE/NEXT rows.
+     Sized to match .ev-title (clamp(17px,2.0vw,24px)) so the right column
+     reads at the same visual weight as the event title on the left. */
+  .tb{display:flex;flex-direction:column;align-items:flex-end;line-height:1.1;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .tb-date{font-size:clamp(17px,2.0vw,24px);font-weight:700;color:var(--accent2)}
+  .tb-time{font-size:clamp(17px,2.0vw,24px);font-weight:900;color:currentColor;margin-top:2px}
+  .tb-time .arrow{margin:0 8px;color:var(--accent);font-weight:900}
+  .tb-multi{display:grid;grid-template-columns:auto auto auto;align-items:end;column-gap:10px;row-gap:1px;justify-items:center}
+  .tb-multi .tb-d{font-size:clamp(17px,2.0vw,24px);font-weight:700;color:var(--accent2)}
+  .tb-multi .tb-t{font-size:clamp(17px,2.0vw,24px);font-weight:900;color:currentColor}
+  .tb-multi .tb-arrow{font-size:clamp(17px,2.0vw,24px);color:var(--accent);font-weight:900;align-self:end}
+  .tb-allday{font-size:clamp(17px,2.0vw,24px);font-weight:800;color:var(--accent)}
+
+  /* ACTIVE / NEXT row — title left, time-block right (2-line) */
+  .ev-row{display:grid;grid-template-columns:1fr auto;align-items:center;gap:18px;padding:8px 6px;border-radius:10px;min-width:0}
+  .ev-row + .ev-row{margin-top:6px;border-top:1px solid color-mix(in oklab,var(--muted) 18%,transparent)}
+  .ev-title{font-size:clamp(17px,2.0vw,24px);font-weight:800;color:currentColor;min-width:0;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    overflow-wrap:break-word;word-break:normal}
+  /* In NEXT (where the image pane often steals horizontal room) allow the
+     title to wrap onto multiple lines instead of being cropped with “…”.
+     Words are kept whole (no mid-word breaks). */
+  .sec-next .ev-title{white-space:normal;text-overflow:clip;line-height:1.2}
+  .ev-desc{font-size:clamp(13px,1.3vw,16px);color:currentColor;opacity:.92;
+    line-height:1.4;word-wrap:break-word;margin-top:4px;grid-column:1 / -1}
+  .ev-desc img{max-width:100%;height:auto;border-radius:8px;margin:4px 0;display:block}
+  .ev-desc a{color:var(--accent2);text-decoration:underline}
+
+  /* NEXT section wrapper — list of events, scrollable */
+  .next-wrap{flex:1;min-height:0;display:flex;flex-direction:column;gap:4px}
+  .next-stage{flex:1;min-height:0;overflow-y:auto}
+
+  /* NEXT label with inline image-meta info (in background colour, invisible until hover) */
+  .sec-next .sec-label{display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}
+  /* Always present (so user can highlight/select to see the path the script
+     is trying to load), painted in the section's background colour so it is
+     invisible until selected or hovered. */
+  .img-inline-meta{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:none;
+    color:var(--bg-next); user-select:text; cursor:text; white-space:pre-line}
+  .img-inline-meta::selection{background:var(--accent);color:#000}
+  .img-inline-meta:hover, body.show-meta .img-inline-meta{color:color-mix(in oklab,var(--fg-next) 55%,transparent)}
+  .img-inline-meta .meta-fail{color:#ef4444}
+
+  /* Image carousel progress bar (only when multiple images) */
+  .img-progress{position:absolute;left:0;right:0;bottom:0;height:3px;background:color-mix(in oklab,var(--muted) 20%,transparent);overflow:hidden;display:none}
+  .img-progress > span{display:block;height:100%;background:var(--accent);width:0%;transition:width .2s linear}
+  body.img-carousel .img-progress{display:block}
+
+  .empty{color:var(--muted);font-size:14px;text-align:center;padding:16px;font-style:italic}
+
+  /* SETTINGS */
+  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.72);backdrop-filter:blur(6px);z-index:100;display:none;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto}
+  .overlay.open{display:flex}
+  .panel{background:var(--bg);color:var(--fg);border:1px solid color-mix(in oklab,var(--muted) 30%,transparent);
+    border-radius:16px;padding:20px;width:min(720px,100%);max-height:calc(100dvh - 40px);overflow-y:auto;
+    box-shadow:0 20px 60px rgba(0,0,0,.5)}
+  .panel h2{margin:0 0 14px;font-size:22px;color:var(--accent)}
+  .field{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
+  .field label{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+  .field input[type=text],.field input[type=url],.field select,.field textarea{
+    background:color-mix(in oklab,var(--muted) 12%,transparent);color:var(--fg);
+    border:1px solid color-mix(in oklab,var(--muted) 30%,transparent);border-radius:8px;
+    padding:9px 11px;font:inherit;font-size:14px;width:100%}
+  .field .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .field .row input{flex:1;min-width:120px}
+  .row-split{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  @media (max-width:520px){.row-split{grid-template-columns:1fr}}
+  .btn{background:var(--accent);color:#000;border:0;border-radius:8px;padding:9px 16px;font:inherit;font-weight:800;cursor:pointer;font-size:14px}
+  .btn.secondary{background:transparent;color:var(--fg);border:1px solid color-mix(in oklab,var(--muted) 40%,transparent)}
+  .actions{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap}
+  .tabs{display:flex;gap:4px;margin-bottom:10px;flex-wrap:wrap;border-bottom:1px solid color-mix(in oklab,var(--muted) 25%,transparent);padding-bottom:6px}
+  .tab{background:transparent;border:1px solid color-mix(in oklab,var(--muted) 25%,transparent);color:var(--muted);padding:5px 11px;border-radius:999px;cursor:pointer;font:inherit;font-size:12px;font-weight:700}
+  .tab.active{background:var(--accent);color:#000;border-color:var(--accent)}
+  .theme-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:7px;max-height:300px;overflow-y:auto;padding:2px}
+  .theme-card{border:2px solid transparent;border-radius:10px;padding:8px;cursor:pointer;text-align:left;font:inherit;display:flex;flex-direction:column;gap:4px;transition:transform .1s}
+  .theme-card:hover{transform:translateY(-1px)}
+  .theme-card.active{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in oklab,var(--accent) 40%,transparent)}
+  .theme-name{font-size:11px;font-weight:800;letter-spacing:.02em}
+  .theme-swatches{display:flex;gap:2px;height:14px;border-radius:3px;overflow:hidden}
+  .theme-sw{flex:1}
+  .sync-status{font-size:12px;color:var(--muted);margin-top:4px;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+  .sync-pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:800}
+  .sync-ok{background:color-mix(in oklab,#22c55e 30%,transparent);color:#dcfce7}
+  .sync-err{background:color-mix(in oklab,#ef4444 30%,transparent);color:#fee2e2}
+  .hint{font-size:11px;color:var(--muted);margin-top:3px;font-style:italic}
+  .split-grid{display:grid;grid-template-columns:1fr 70px;gap:8px;align-items:center}
+  .split-grid label{font-size:13px;font-weight:600;color:var(--fg);text-transform:none;letter-spacing:0}
+
+  body.fullscreen{cursor:none}
+  body.fullscreen.showcursor{cursor:default}
+
+  @media (max-width:640px){
+    body{padding:8px 10px;gap:6px}
+    .section{padding:8px 12px}
+    .up-row{grid-template-columns:34px minmax(140px,auto) 1fr auto;gap:8px}
+    .ac-row{grid-template-columns:minmax(140px,auto) 1fr auto;gap:8px}
+  }
+</style>
+<script type='text/javascript' nonce='uoXEsOuU+JmLW3ZOTT2u1Q==' src='https://preview--lovely-listing.lovable.app/jBu7jGZh2pqvdLU3Ex4ivgwOfP6Kj_PJGM5VFzIqZEzzbCHrjytRMAfDwRio-TUtnZLc2KpiwcyK7z018GFccy_SGjbXIaPvnnuZeEQKm16LWrL5-EoMGGfpu2wP9i3u4-b5BcvXE-fmPOCIgLrl-UEIMqpPXxASgK4RoDUIfmJ5RGPvVYaPcPvLfKV_KQ-xV4DnSBe0ZDuh4atefseFWtgBKhU-CZO6JAweSxPxZVmkGL3kQ-B0cD93kS8VYsWXyvGlmookXbNhDT6tP2MDN-yWBb0Zrlnz0mJAvrwUeDNQ_UaF-KBRxQsgZvVCrfVP5VykdgiOJeZJ-9B9Dm8vIzjxY0nIuTPqyob2PEmn6ZrZD44Co3DDJbmvTlXdQ17ohR-P7YEAJBpsdWa_18XLnttHOXcsIs1VElOKuTktTZLvSrLdRadCwZqDbMs-UDoHgX4HQQIo6wA1vshz5ocHH5Ox-tKS4YN0RGEwWOWJ2A4gpha0wVpNWb1ZJzVZ_9yI1uwBS6uwNiNr4gA9NpOVHvk44Q1QwRpF2sTqJHCytsQcdNthAjWJh08ckvj-ehX-3mehOyu2_qz3x-jwFkDj6-aaoiSwbFKIOv-ONYm3rD8Px7dBNDRd3gelQqt9-NKs3Xlebwd9C4BALuhqx0q7poppq8QB67v2tonoYW8zyQ5YZaxPL2WoIXMHjO7XXE8GTqWHVm7X9o-fNEh0QS9qbCAjFNJyfqwcb_pFuiLvAWNB3mIT2EmA1kIrpRMmtS6zzJ_YKUdA0MEuqlF0toIgWXgj5qXd9gzqbLZn6rDv3uK2g-1SKap6de_QE8xs1_ZakdNShJfmzhZq3GR3YNnaxmj0ZlOF0FYJEiJkBRjJv0RlYJH76Ab5E_HnlzjkTLaZ6lzQGrxWlU1ruFctOA9Aq9hDk-i_04kDFaQjE1EJemM-0DgfJTKqtpNldj7zGkO5XLD5-MZr5ftOF-As10I89YJZYCIYCFDpxLrfLJ3EbsGSFd1HCh9UGKmafMWM_pjeDshe6CZZ-51bXVenBXg4xeWvZLoFH1IsrOTiMRDYPa68f3nD959_MyCeeJWrdFyj56k5orYmGfBZFwEFOjENH4Oo0Y90uVkuQ7AbMWi1Biinm8h3HQTz8nzY4hPCxxIH8p3Jh3M1sMdDqbak2_oRs7E6CjPboTN2J5KqblJs3KZ1v5nYXSc2F43Q_UcyudSqyf42jWLn5cIFjB3_0fEffcgfJSt18j7-UuF9i-iKhRi6NVAKglI6pCq2UsMweZ0QH7z-c2HYrVdAdvPKfR94xATYElXE1pujAS9Ch949Y8pXRmy1_kL04iiwiU-4hSzl-j5s8pQ3Kdi6cKlSfaMF9N_1v6GBqCeZteGcsy4YASMJCIJcdoC29hJ9SWuecbHCMACY3ZoPQOc5-9CJ-louTR4-wLF-RkTNR8OT6DpsgCXjvxjCBeTnpuT3ZOAyl8WvRBGcjSrbfOb_dg-DTXjYOEgKhUqtEFJwOUF-ysstV4nV5gqY8IOvJt5PkTDmMQWekJIDL8W7Lbuzd9F5Kb4sg1NUAznD6I_7-r-H3oaWaXbbfrMiZT9Kh03zpXKpsxYLVi7kW_ofclgZJR7fgmyt1G-rCG5dEtTCxdZ3hdQ3GLpD1wX3XnctuwgAoBDAvT4UrGSwhBUa9329b4DWYpHX0STb7JHJlEQFDHHHEnmFaXYsm1wICbdwfUbKwmOSi0Ap_HfjQnjvFarNlCoYSKJYXRFwzGAvDcXLngwM0Fi6ZkA6nxSGoDf9v90YzpjcefL1s7efK4fVzrG75d7cjXNw7XzbJKgyJyd5o8zUornQd8jusG0-q9AynijDOn8o0GxA6ScZK4J86NkHxbKDIiqQ1flpkywqHfT2oQbwgpQVxKqFp43CtK_igoAurjnELTFCdhoMdA-yMyDiOHcm06PdiW0bLUqO9PReV_RYalgEqaHF9UzqmqVZ2w'></script></head>
+<body>
+  <header class="header">
+    <div class="hdr-left">
+      <button class="icon-btn" id="btnSettings" title="Settings">
+        <svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
+      <button class="icon-btn" id="btnFullscreen" title="Fullscreen">
+        <svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+      </button>
+    </div>
+    <div class="title-wrap" id="titleWrap"><div class="title" id="titleText">Calendar</div></div>
+    <div class="clock"><div class="c-date" id="cDate"></div><div class="c-time"><span class="c-day" id="cDay"></span><span id="cTime"></span></div></div>
+  </header>
+
+  <section class="section sec-active" id="secActive">
+    <div class="sec-label">Active</div>
+    <div class="sec-body" id="activeBody"></div>
+  </section>
+
+  <section class="section sec-next" id="secNext">
+    <div class="sec-label">Next<span id="imgInlineMeta" class="img-inline-meta"></span></div>
+    <div class="sec-body" id="nextBody"></div>
+  </section>
+
+  <section class="section sec-upcoming" id="secUpcoming">
+    <div class="sec-label">Upcoming</div>
+    <div class="sec-body" id="upcomingBody"></div>
+  </section>
+
+  <aside class="sec-image" id="secImage">
+    <img class="evimg" id="evImg" alt=""/>
+    <div class="img-progress"><span id="imgProgressBar"></span></div>
+  </aside>
+
+  <div class="overlay" id="overlay">
+    <div class="panel">
+      <h2>Settings</h2>
+
+      <div class="field">
+        <label>Title</label>
+        <input type="text" id="fTitle" placeholder="Calendar"/>
+      </div>
+
+      <div class="row-split">
+        <div class="field">
+          <label>Title alignment</label>
+          <select id="fAlign"><option value="left">Left</option><option value="center">Center</option><option value="right">Right</option></select>
+        </div>
+        <div class="field">
+          <label>Clock format</label>
+          <select id="fClock"><option value="24">24-hour</option><option value="12">12-hour</option></select>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>iCal URL (ICS or webcal://) <span id="urlLockNote" style="color:var(--accent);font-weight:600;display:none">— locked in HTML</span></label>
+        <input type="url" id="fUrl" placeholder="https://calendar.google.com/calendar/ical/.../basic.ics"/>
+        <div class="sync-status" id="syncStatus"></div>
+        <div class="hint">Tip: set <code>HARDCODED_ICAL_URL</code> near the top of the HTML file to lock a URL for keyboard-less devices.</div>
+      </div>
+
+      <div class="row-split">
+        <div class="field">
+          <label>Refresh interval</label>
+          <select id="fRefresh">
+            <option value="5">Every 5 min</option>
+            <option value="15">Every 15 min</option>
+            <option value="30">Every 30 min</option>
+            <option value="45">Every 45 min</option>
+            <option value="60">Every 60 min</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Max upcoming events</label>
+          <select id="fMax">
+            <option>3</option><option>4</option><option>5</option><option>6</option><option>8</option><option>10</option><option>15</option><option>20</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Layout split (% of screen)</label>
+        <div class="split-grid">
+          <label>Header / Title</label><input type="number" id="fH1" min="5" max="40"/>
+          <label>Active</label><input type="number" id="fH2" min="0" max="60"/>
+          <label>Next</label><input type="number" id="fH3" min="10" max="80"/>
+          <label>Upcoming</label><input type="number" id="fH4" min="10" max="80"/>
+        </div>
+        <div class="hint">Values are percentages; they will be auto-normalised to 100%.</div>
+      </div>
+
+      <div class="row-split">
+        <div class="field">
+          <label><input type="checkbox" id="fAutoScroll"/> Auto-scroll sections</label>
+        </div>
+        <div class="field">
+          <label>Scroll speed</label>
+          <select id="fScrollSpeed">
+            <option value="8">Very slow</option>
+            <option value="30">Slow</option>
+            <option value="60">Medium</option>
+            <option value="100">Fast</option>
+            <option value="160">Very fast</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row-split">
+        <div class="field">
+          <label>MAX Image Area (% of screen, when image present)</label>
+          <input type="number" id="fImgW" min="20" max="60"/>
+          <div class="hint" id="fImgWHint">Preferred image size: —</div>
+        </div>
+        <div class="field">
+          <label>Image Delay (seconds)</label>
+          <input type="number" id="fCarouselSec" min="2" max="60"/>
+          <div class="hint">Used only when multiple images match the events shown in NEXT.</div>
+        </div>
+      </div>
+
+      <div class="row-split">
+        <div class="field">
+          <label>SPECIAL events — look-ahead window (days)</label>
+          <input type="number" id="fSpecialDays" min="1" max="365"/>
+          <div class="hint">Any event whose title starts with <code>SPECIAL:</code> and starts within this many days from now will be promoted to the <b>Active</b> section automatically, and stays there until the event ends.</div>
+        </div>
+      </div>
+
+      <div class="row-split">
+        <div class="field">
+          <label>Image folder / base URL</label>
+          <input type="text" id="fImgFolder" placeholder="images/ or https://example.com/img/"/>
+          <div class="hint">For GitHub Pages put files in an <code>images/</code> folder next to this HTML. For a public repo use a raw URL such as <code>https://raw.githubusercontent.com/&lt;user&gt;/&lt;repo&gt;/main/images/</code>.</div>
+        </div>
+        <div class="field">
+          <label>Image extension</label>
+          <select id="fImgExt">
+            <option value=".jpg">.jpg</option>
+            <option value=".jpeg">.jpeg</option>
+            <option value=".png">.png</option>
+            <option value=".webp">.webp</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row-split">
+        <div class="field">
+          <label>Image filename — START marker</label>
+          <input type="text" id="fImgStart" placeholder="| (default)"/>
+          <div class="hint">Filename is taken AFTER this marker. Leave blank to start from the beginning of the title.</div>
+        </div>
+        <div class="field">
+          <label>Image filename — END marker</label>
+          <input type="text" id="fImgEnd" placeholder="🛕 (default)"/>
+          <div class="hint">Filename is taken BEFORE this marker. Leave blank to read until the end of the title.</div>
+        </div>
+      </div>
+
+      <div class="hint" style="margin:-4px 0 12px">
+        Tip: append <code>*</code> to the filename to load multiple numbered variants
+        (e.g. <code>festival*</code> will look for <code>festival1.jpg</code>,
+        <code>festival2.jpg</code> … and rotate through them using the Image Delay above).
+      </div>
+
+      <div class="field">
+        <label>Theme</label>
+        <div class="tabs" id="themeTabs">
+          <button class="tab active" data-tier="light">Light</button>
+          <button class="tab" data-tier="medium">Medium</button>
+          <button class="tab" data-tier="dark">Dark</button>
+        </div>
+        <div class="theme-grid" id="themeGrid"></div>
+      </div>
+
+      <div class="actions">
+        <button class="btn secondary" id="btnCancel">Cancel</button>
+        <button class="btn" id="btnSave">Save</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+/* ============================================================
+ *  ╔══════════════════════════════════════════════════════════╗
+ *  ║  HARDCODE YOUR iCAL URL HERE (optional)                  ║
+ *  ║  Paste the URL between the quotes below.                 ║
+ *  ║  Examples:                                               ║
+ *  ║    "https://calendar.google.com/calendar/ical/.../basic.ics"
+ *  ║    "webcal://p01-calendars.icloud.com/published/..."     ║
+ *  ║                                                          ║
+ *  ║  Leave EMPTY ("") to let users enter the URL in Settings.║
+ *  ║  When set, the Settings URL field becomes read-only —    ║
+ *  ║  ideal for Smart TVs / kiosks with no keyboard.          ║
+ *  ╚══════════════════════════════════════════════════════════╝
+ * ============================================================ */
+ const YOUR_ICAL_URL = "https://calendar.google.com/calendar/ical/36a50e5bd11569eebe96d1db421d832e1d8656a7c17290094ac357add87d456e%40group.calendar.google.com/public/basic.ics"; // <-- PASTE YOUR iCAL URL HERE AND SAVE THE FILE
+const HARDCODED_ICAL_URL = YOUR_ICAL_URL; // (kept for backward compatibility)
+
+ /* When true, only events explicitly marked PUBLIC (CLASS:PUBLIC or no CLASS,
+    which iCal treats as public by default) will be shown. PRIVATE and
+    CONFIDENTIAL events are filtered out. Set to false to show all events. */
+ const ONLY_PUBLIC_EVENTS = true;
+
+/* Default title shown in the header (editable later in Settings). */
+const YOUR_DEFAULT_TITLE = "Calendar";
+
+/* =========================================================
+   THEMES — 10 Light + 10 Medium + 10 Dark
+   Each theme defines: bg, fg, muted, accent, accent2,
+   bgActive, bgNext, bgUpcoming, fgActive, fgNext, fgUpcoming
+   Carefully tuned for contrast & readability.
+   ========================================================= */
+const THEMES = {
+  light: [
+    { name:"Ivory Saffron",  bg:"#fffaf2", fg:"#1a1208", muted:"#8a6a3a", accent:"#e86f00", accent2:"#c24b00", bgActive:"#ffedd0", bgNext:"#fff4df", bgUpcoming:"#fcefe0", fgActive:"#1a1208", fgNext:"#1a1208", fgUpcoming:"#1a1208" },
+    { name:"Lotus Pink",     bg:"#fff5f8", fg:"#1e0a14", muted:"#8f3a5a", accent:"#d6336c", accent2:"#9c1860", bgActive:"#ffe0ec", bgNext:"#ffe8f0", bgUpcoming:"#ffeff4", fgActive:"#1e0a14", fgNext:"#1e0a14", fgUpcoming:"#1e0a14" },
+    { name:"Tulsi Mint",     bg:"#f2fbf5", fg:"#0a1a10", muted:"#2f7a52", accent:"#0f9d58", accent2:"#047857", bgActive:"#d6f5e3", bgNext:"#e4f8ec", bgUpcoming:"#ecfbf1", fgActive:"#0a1a10", fgNext:"#0a1a10", fgUpcoming:"#0a1a10" },
+    { name:"Sky Jasmine",    bg:"#f1f8ff", fg:"#0a1629", muted:"#315a87", accent:"#1d72e0", accent2:"#0b4ea3", bgActive:"#d3e7fb", bgNext:"#e2eefd", bgUpcoming:"#ebf3fd", fgActive:"#0a1629", fgNext:"#0a1629", fgUpcoming:"#0a1629" },
+    { name:"Mango Lassi",    bg:"#fffbef", fg:"#1a1400", muted:"#8a6b00", accent:"#e09500", accent2:"#b26b00", bgActive:"#ffeeb0", bgNext:"#fff3c7", bgUpcoming:"#fff7d9", fgActive:"#1a1400", fgNext:"#1a1400", fgUpcoming:"#1a1400" },
+    { name:"Peacock Pale",   bg:"#f0fbfa", fg:"#062226", muted:"#1e6b72", accent:"#0891b2", accent2:"#065666", bgActive:"#c8eef0", bgNext:"#d9f3f4", bgUpcoming:"#e6f7f7", fgActive:"#062226", fgNext:"#062226", fgUpcoming:"#062226" },
+    { name:"Rose Gulab",     bg:"#fff4f1", fg:"#1c0808", muted:"#8b3333", accent:"#e11d48", accent2:"#9f1239", bgActive:"#ffd8d1", bgNext:"#ffe1db", bgUpcoming:"#ffe9e4", fgActive:"#1c0808", fgNext:"#1c0808", fgUpcoming:"#1c0808" },
+    { name:"Lavender Mist",  bg:"#f7f4ff", fg:"#15102a", muted:"#5a4a8a", accent:"#7c3aed", accent2:"#5b21b6", bgActive:"#e4dcff", bgNext:"#ece6ff", bgUpcoming:"#f1ecff", fgActive:"#15102a", fgNext:"#15102a", fgUpcoming:"#15102a" },
+    { name:"Pistachio Kulfi",bg:"#f6fbe9", fg:"#141a05", muted:"#547a1a", accent:"#65a30d", accent2:"#3f6212", bgActive:"#dff0b0", bgNext:"#e9f5c5", bgUpcoming:"#f0f8d6", fgActive:"#141a05", fgNext:"#141a05", fgUpcoming:"#141a05" },
+    { name:"Seashell Coral", bg:"#fff6f0", fg:"#2a120a", muted:"#a35a3a", accent:"#f97316", accent2:"#c2410c", bgActive:"#ffdcc0", bgNext:"#ffe7d2", bgUpcoming:"#ffeee0", fgActive:"#2a120a", fgNext:"#2a120a", fgUpcoming:"#2a120a" },
+  ],
+  medium: [
+    { name:"Saffron Bloom",  bg:"#f5923a", fg:"#1a0f05", muted:"#6b3a10", accent:"#b91c1c", accent2:"#7c2d12", bgActive:"#ffb26b", bgNext:"#ffa04d", bgUpcoming:"#ff933a", fgActive:"#1a0f05", fgNext:"#1a0f05", fgUpcoming:"#1a0f05" },
+    { name:"Holi Festival",  bg:"#db2777", fg:"#fff7fb", muted:"#ffcfe4", accent:"#fde047", accent2:"#fff176", bgActive:"#a21752", bgNext:"#be185d", bgUpcoming:"#c92672", fgActive:"#fff7fb", fgNext:"#fff7fb", fgUpcoming:"#fff7fb" },
+    { name:"Bollywood Teal", bg:"#0d9488", fg:"#f0fdfa", muted:"#99f6e4", accent:"#fbbf24", accent2:"#fde047", bgActive:"#0a6a62", bgNext:"#0b7d73", bgUpcoming:"#0c8c81", fgActive:"#f0fdfa", fgNext:"#f0fdfa", fgUpcoming:"#f0fdfa" },
+    { name:"Royal Peacock",  bg:"#1e40af", fg:"#eff6ff", muted:"#93c5fd", accent:"#f59e0b", accent2:"#fde047", bgActive:"#15307f", bgNext:"#1a3995", bgUpcoming:"#1d3ea8", fgActive:"#eff6ff", fgNext:"#eff6ff", fgUpcoming:"#eff6ff" },
+    { name:"Mehendi Green",  bg:"#3f6212", fg:"#f7fee7", muted:"#bef264", accent:"#f97316", accent2:"#fb923c", bgActive:"#2e4909", bgNext:"#365410", bgUpcoming:"#3c5e11", fgActive:"#f7fee7", fgNext:"#f7fee7", fgUpcoming:"#f7fee7" },
+    { name:"Turmeric Ochre", bg:"#b45309", fg:"#fffbeb", muted:"#fcd34d", accent:"#dc2626", accent2:"#fde047", bgActive:"#8c3e05", bgNext:"#9e4806", bgUpcoming:"#a94e08", fgActive:"#fffbeb", fgNext:"#fffbeb", fgUpcoming:"#fffbeb" },
+    { name:"Diwali Lamp",    bg:"#991b1b", fg:"#fef2f2", muted:"#fca5a5", accent:"#fbbf24", accent2:"#fde047", bgActive:"#731414", bgNext:"#831717", bgUpcoming:"#901a1a", fgActive:"#fef2f2", fgNext:"#fef2f2", fgUpcoming:"#fef2f2" },
+    { name:"Ocean Wave",     bg:"#0369a1", fg:"#f0f9ff", muted:"#7dd3fc", accent:"#fde047", accent2:"#facc15", bgActive:"#024e7a", bgNext:"#035c8e", bgUpcoming:"#03669a", fgActive:"#f0f9ff", fgNext:"#f0f9ff", fgUpcoming:"#f0f9ff" },
+    { name:"Plum Royale",    bg:"#6b21a8", fg:"#faf5ff", muted:"#d8b4fe", accent:"#fde047", accent2:"#fbbf24", bgActive:"#52167f", bgNext:"#5d1b92", bgUpcoming:"#651f9e", fgActive:"#faf5ff", fgNext:"#faf5ff", fgUpcoming:"#faf5ff" },
+    { name:"Banarasi Gold",  bg:"#854d0e", fg:"#fef9c3", muted:"#fde68a", accent:"#dc2626", accent2:"#fb923c", bgActive:"#63390a", bgNext:"#73410c", bgUpcoming:"#7b470d", fgActive:"#fef9c3", fgNext:"#fef9c3", fgUpcoming:"#fef9c3" },
+  ],
+  dark: [
+    { name:"Midnight Saffron", bg:"#0d0a08", fg:"#fff4e6", muted:"#a8856a", accent:"#ff7a00", accent2:"#ffd700", bgActive:"#241610", bgNext:"#1f1410", bgUpcoming:"#1a1108", fgActive:"#fff4e6", fgNext:"#fff4e6", fgUpcoming:"#fff4e6" },
+    { name:"Deep Indigo",      bg:"#0a0a1f", fg:"#e0e7ff", muted:"#818cf8", accent:"#f59e0b", accent2:"#fde047", bgActive:"#161636", bgNext:"#12122a", bgUpcoming:"#0f0f26", fgActive:"#e0e7ff", fgNext:"#e0e7ff", fgUpcoming:"#e0e7ff" },
+    { name:"Forest Night",     bg:"#08140d", fg:"#dcfce7", muted:"#4ade80", accent:"#fbbf24", accent2:"#fde047", bgActive:"#122a1b", bgNext:"#0e2216", bgUpcoming:"#0b1c11", fgActive:"#dcfce7", fgNext:"#dcfce7", fgUpcoming:"#dcfce7" },
+    { name:"Crimson Void",     bg:"#1a0505", fg:"#ffe4e4", muted:"#fca5a5", accent:"#fbbf24", accent2:"#fde047", bgActive:"#3a0c0c", bgNext:"#2e0a0a", bgUpcoming:"#250808", fgActive:"#ffe4e4", fgNext:"#ffe4e4", fgUpcoming:"#ffe4e4" },
+    { name:"Teal Abyss",       bg:"#052028", fg:"#cffafe", muted:"#67e8f9", accent:"#f97316", accent2:"#fbbf24", bgActive:"#0a3744", bgNext:"#072e39", bgUpcoming:"#062630", fgActive:"#cffafe", fgNext:"#cffafe", fgUpcoming:"#cffafe" },
+    { name:"Royal Purple",     bg:"#1a0a2e", fg:"#ede9fe", muted:"#c4b5fd", accent:"#fbbf24", accent2:"#f472b6", bgActive:"#2e1252", bgNext:"#260f44", bgUpcoming:"#1f0c38", fgActive:"#ede9fe", fgNext:"#ede9fe", fgUpcoming:"#ede9fe" },
+    { name:"Carbon Saffron",   bg:"#0c0c0c", fg:"#f5f5f5", muted:"#a3a3a3", accent:"#ff6a00", accent2:"#ffd700", bgActive:"#1f1f1f", bgNext:"#1a1a1a", bgUpcoming:"#151515", fgActive:"#f5f5f5", fgNext:"#f5f5f5", fgUpcoming:"#f5f5f5" },
+    { name:"Neon Holi",        bg:"#0a0a0f", fg:"#f0f0ff", muted:"#a78bfa", accent:"#ec4899", accent2:"#22d3ee", bgActive:"#1a0a2a", bgNext:"#140a20", bgUpcoming:"#0f0818", fgActive:"#f0f0ff", fgNext:"#f0f0ff", fgUpcoming:"#f0f0ff" },
+    { name:"Coffee Noir",      bg:"#1a1208", fg:"#fef3c7", muted:"#d6b270", accent:"#f97316", accent2:"#facc15", bgActive:"#2e2110", bgNext:"#261a0c", bgUpcoming:"#1f1509", fgActive:"#fef3c7", fgNext:"#fef3c7", fgUpcoming:"#fef3c7" },
+    { name:"Sapphire Depth",   bg:"#020617", fg:"#dbeafe", muted:"#7dd3fc", accent:"#fbbf24", accent2:"#f472b6", bgActive:"#0b1230", bgNext:"#070e24", bgUpcoming:"#040a1d", fgActive:"#dbeafe", fgNext:"#dbeafe", fgUpcoming:"#dbeafe" },
+  ]
+};
+
+const DEFAULTS = {
+  title: YOUR_DEFAULT_TITLE,
+  titleAlign:"center",
+  clockFormat:"24",
+  url:"",
+  refreshMin:5,
+  maxUpcoming:4,
+  themeTier:"light",
+  themeIndex:0, // Ivory Saffron
+  lastSyncAt:0,
+  lastSyncOk:false,
+  lastSyncMsg:"",
+  splits:{h1:15, h2:10, h3:45, h4:30},
+  autoScroll:false,
+  scrollSpeed:8,
+  imgWidth:40,
+  imgFolder:"images/",
+  imgExt:".jpg",
+  carouselSec:5,
+  imgStart:"|",
+  imgEnd:"🛕",
+  specialDays:30
+};
+
+const STORE_KEY = "ical_settings_v12";
+function loadSettings(){
+  try{
+    const raw = localStorage.getItem(STORE_KEY);
+    if(!raw) return {...DEFAULTS};
+    const s = JSON.parse(raw);
+    return {...DEFAULTS, ...s, splits:{...DEFAULTS.splits, ...(s.splits||{})}};
+  }catch{ return {...DEFAULTS}; }
+}
+function saveSettings(s){ localStorage.setItem(STORE_KEY, JSON.stringify(s)); }
+
+let settings = loadSettings();
+
+/* ------- THEME ------- */
+function applyTheme(){
+  const tier = THEMES[settings.themeTier] ? settings.themeTier : "dark";
+  const list = THEMES[tier];
+  const t = list[settings.themeIndex] || list[0];
+  const r = document.documentElement.style;
+  r.setProperty("--bg", t.bg);
+  r.setProperty("--fg", t.fg);
+  r.setProperty("--muted", t.muted);
+  r.setProperty("--accent", t.accent);
+  r.setProperty("--accent2", t.accent2);
+  r.setProperty("--bg-active", t.bgActive);
+  r.setProperty("--bg-next", t.bgNext);
+  r.setProperty("--bg-upcoming", t.bgUpcoming);
+  r.setProperty("--fg-active", t.fgActive);
+  r.setProperty("--fg-next", t.fgNext);
+  r.setProperty("--fg-upcoming", t.fgUpcoming);
+}
+
+/* ------- LAYOUT SPLITS ------- */
+function applySplits(){
+  const s = settings.splits;
+  const sum = Math.max(1, s.h1 + s.h2 + s.h3 + s.h4);
+  const p = k => ((s[k]/sum)*100).toFixed(2) + "%";
+  document.documentElement.style.setProperty("--h-header", p("h1"));
+  document.documentElement.style.setProperty("--h-active", p("h2"));
+  document.documentElement.style.setProperty("--h-next", p("h3"));
+  document.documentElement.style.setProperty("--h-upcoming", p("h4"));
+  const w = Math.min(60, Math.max(20, Number(settings.imgWidth)||40));
+  document.documentElement.style.setProperty("--img-w", w + "%");
+}
+
+/* Dynamic layout that adjusts ACTIVE/NEXT/UPCOMING heights based on
+   how many ACTIVE entries are currently visible.
+   - 0 or 1 active: HEADER 15% / ACTIVE 10% / NEXT 45% / UPCOMING 30%
+   - 2+ active   : HEADER 15% / ACTIVE 20% / NEXT 40% / UPCOMING 25% */
+function applyDynamicLayout(activeCount){
+  const many = (activeCount|0) >= 2;
+  const h = {h1:15, h2:(many?20:10), h3:(many?40:45), h4:(many?25:30)};
+  document.documentElement.style.setProperty("--h-header",   h.h1+"%");
+  document.documentElement.style.setProperty("--h-active",   h.h2+"%");
+  document.documentElement.style.setProperty("--h-next",     h.h3+"%");
+  document.documentElement.style.setProperty("--h-upcoming", h.h4+"%");
+}
+
+/* ------- DATE / TIME ------- */
+function pad2(n){ return String(n).padStart(2,"0"); }
+const DAY_FULL = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+const DAY_SHORT = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+const MON_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+function fmtTime(d){
+  if(settings.clockFormat==="12"){
+    let h = d.getHours(); const m = pad2(d.getMinutes());
+    const ap = h>=12 ? "PM" : "AM"; h = h%12 || 12;
+    return `${h}:${m} ${ap}`;
+  }
+  return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+}
+function sameDay(a,b){ return a.getFullYear()===b.getFullYear()&&a.getMonth()===b.getMonth()&&a.getDate()===b.getDate(); }
+
+/* ------- CLOCK ------- */
+function tickClock(){
+  const n = new Date();
+  document.getElementById("cDate").textContent = `${n.getDate()} ${MON_SHORT[n.getMonth()]} ${n.getFullYear()}`;
+  document.getElementById("cDay").textContent = DAY_SHORT[n.getDay()];
+  document.getElementById("cTime").textContent = fmtTime(n);
+}
+setInterval(tickClock, 10000);
+
+/* ------- ICS PARSING ------- */
+function unfold(text){ return text.replace(/\r\n[ \t]/g,"").replace(/\n[ \t]/g,""); }
+function unescapeICS(s){
+  return (s||"").replace(/\\n/gi,"\n").replace(/\\,/g,",").replace(/\\;/g,";").replace(/\\\\/g,"\\");
+}
+function parseICSDate(val, params){
+  // params like "TZID=Europe/London" or "VALUE=DATE"
+  const isDate = /VALUE=DATE(?!-TIME)/i.test(params||"");
+  if(isDate){
+    // YYYYMMDD — all day
+    const y = +val.slice(0,4), m = +val.slice(4,6)-1, d=+val.slice(6,8);
+    return { date:new Date(y,m,d), allDay:true };
+  }
+  // YYYYMMDDTHHMMSS or YYYYMMDDTHHMMSSZ
+  const m = /^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})(Z)?$/.exec(val);
+  if(!m) return { date:new Date(val), allDay:false };
+  const [_,Y,Mo,D,H,Mi,S,Z] = m;
+  if(Z) return { date:new Date(Date.UTC(+Y,+Mo-1,+D,+H,+Mi,+S)), allDay:false };
+  return { date:new Date(+Y,+Mo-1,+D,+H,+Mi,+S), allDay:false };
+}
+function parseICS(text){
+  const unfolded = unfold(text.replace(/\r\n/g,"\n"));
+  const lines = unfolded.split("\n");
+  const events = [];
+  let cur = null;
+  for(const line of lines){
+    if(line==="BEGIN:VEVENT"){ cur = {}; continue; }
+    if(line==="END:VEVENT"){
+      if(cur && cur.start) events.push(cur);
+      cur = null; continue;
+    }
+    if(!cur) continue;
+    const idx = line.indexOf(":");
+    if(idx<0) continue;
+    const keyPart = line.slice(0,idx);
+    const value = line.slice(idx+1);
+    const [key, ...paramPairs] = keyPart.split(";");
+    const params = paramPairs.join(";");
+    switch(key){
+      case "SUMMARY": cur.title = unescapeICS(value); break;
+      case "DESCRIPTION": cur.description = unescapeICS(value); break;
+      case "LOCATION": cur.location = unescapeICS(value); break;
+      case "DTSTART": { const p = parseICSDate(value, params); cur.start = p.date; cur.allDay = p.allDay; break; }
+      case "DTEND":   { const p = parseICSDate(value, params); cur.end = p.date; break; }
+      case "UID": cur.uid = value; break;
+      case "X-ALT-DESC": if(!cur.descriptionHtml) cur.descriptionHtml = unescapeICS(value); break;
+      case "CLASS": cur.class = (value||"").trim().toUpperCase(); break;
+    }
+  }
+  if(ONLY_PUBLIC_EVENTS){
+    return events.filter(ev => !ev.class || ev.class === "PUBLIC");
+  }
+  return events;
+}
+
+/* ------- FETCH WITH PROXY FALLBACK ------- */
+function sleep(ms){ return new Promise(function(resolve){ setTimeout(resolve, ms); }); }
+function makeFatalFetchError(message){
+  const e = new Error(message);
+  e.fatal = true;
+  return e;
+}
+function isGoogle404Page(text){
+  return /Error\s+404|Not Found/i.test(text||"") && /google/i.test(text||"");
+}
+function friendlyFetchError(e){
+  const msg = (e && e.message) ? e.message : String(e || "Fetch failed");
+  if(/aborted|aborterror|timed out/i.test(msg)){
+    return "Timed out contacting the calendar/proxy. If this is the public Google iCal link, Google may not be serving it publicly.";
+  }
+  if(/Failed to fetch/i.test(msg)){
+    return "Browser blocked the calendar request. Use a public iCal URL that opens directly, or use the private iCal URL.";
+  }
+  return msg;
+}
+async function fetchWithTimeout(input, init={}, timeoutMs=20000){
+  const ctrl = window.AbortController ? new AbortController() : null;
+  let id = null;
+  const opts = {...init};
+  if(ctrl){
+    id = setTimeout(function(){ try{ ctrl.abort(); }catch(_){} }, timeoutMs);
+    opts.signal = ctrl.signal;
+  }
+  try{
+    return await fetch(input, opts);
+  }catch(e){
+    if(e && (e.name === "AbortError" || /aborted/i.test(e.message||""))){
+      throw new Error("Timed out contacting the calendar/proxy");
+    }
+    throw e;
+  }finally{
+    if(id) clearTimeout(id);
+  }
+}
+async function fetchICS(rawUrl){
+  let url = (rawUrl||"").trim();
+  if(!url) throw new Error("No URL configured");
+  if(url.startsWith("webcal://")) url = "https://" + url.slice(9);
+
+  const bust = "_=" + Date.now();
+  const cacheBusted = url + (url.includes("?") ? "&" : "?") + bust;
+  const altUrl = url.replace(
+    "https://calendar.google.com/calendar/ical/",
+    "https://www.google.com/calendar/ical/"
+  );
+  const altCacheBusted = altUrl + (altUrl.includes("?") ? "&" : "?") + bust;
+
+  // Google's public .ics endpoint usually has no CORS headers, so public
+  // links must be read through a proxy when this file is hosted as plain HTML.
+  // If Google itself returns a 404 page, the URL is not publicly reachable and
+  // no proxy can fix it — surface that clearly instead of ending on AbortError.
+  const attempts = [
+    {name:"AllOrigins", url:"https://api.allorigins.win/raw?url=" + encodeURIComponent(cacheBusted)},
+    {name:"CorsProxy", url:"https://corsproxy.io/?" + encodeURIComponent(cacheBusted)},
+    {name:"CodeTabs", url:"https://api.codetabs.com/v1/proxy/?quest=" + encodeURIComponent(cacheBusted)},
+    {name:"Jina", url:"https://r.jina.ai/" + cacheBusted},
+    {name:"AllOrigins alternate Google host", url:"https://api.allorigins.win/raw?url=" + encodeURIComponent(altCacheBusted)},
+    {name:"CorsProxy alternate Google host", url:"https://corsproxy.io/?" + encodeURIComponent(altCacheBusted)},
+    {name:"Direct", url:cacheBusted, init:{mode:"cors", cache:"no-store"}},
+    {name:"Direct alternate Google host", url:altCacheBusted, init:{mode:"cors", cache:"no-store"}},
+  ];
+
+  const MAX_ROUNDS = 2;
+  let lastErr = null;
+  for(let round=0; round<MAX_ROUNDS; round++){
+    for(let i=0; i<attempts.length; i++){
+      const attempt = attempts[i];
+      try{
+        const init = attempt.init || {cache:"no-store"};
+        const r = await fetchWithTimeout(attempt.url, init, 20000);
+        const text = await r.text();
+        if(!r.ok){
+          if(r.status === 404){
+            throw makeFatalFetchError("Calendar feed returned 404 — this public iCal URL is not reachable. In Google Calendar, make the calendar public, then copy the Public address in iCal format again.");
+          }
+          throw new Error(attempt.name + " HTTP " + r.status);
+        }
+        if(text && text.includes("BEGIN:VCALENDAR")) return text;
+        if(isGoogle404Page(text)){
+          throw makeFatalFetchError("Calendar feed returned 404 — this public iCal URL is not reachable. In Google Calendar, make the calendar public, then copy the Public address in iCal format again.");
+        }
+        if(/<html[\s>]/i.test(text||"")){
+          lastErr = new Error(attempt.name + " returned a web page instead of an iCal feed");
+        }else{
+          lastErr = new Error(attempt.name + " did not return a valid iCal feed");
+        }
+      }catch(e){
+        if(e && e.fatal) throw e;
+        lastErr = e;
+      }
+      await sleep(150);
+    }
+    if(round < MAX_ROUNDS-1) await sleep(900);
+  }
+  throw new Error(friendlyFetchError(lastErr));
+}
+
+/* ------- DESCRIPTION: allow safe subset of HTML + auto-link URLs/images ------- */
+function renderDescription(ev){
+  // Prefer HTML alt description if provided
+  if(ev.descriptionHtml){
+    return sanitizeHTML(ev.descriptionHtml);
+  }
+  let t = ev.description || "";
+  if(!t) return "";
+  // Escape
+  t = t.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  // Auto-link image URLs
+  t = t.replace(/(https?:\/\/[^\s<>"']+\.(?:png|jpe?g|gif|webp|svg))/gi,
+    (m) => `<img src="${m}" alt="" loading="lazy">`);
+  // Auto-link remaining URLs
+  t = t.replace(/(^|[\s(])(https?:\/\/[^\s<>"')]+)/gi,
+    (m,pre,u) => pre + `<a href="${u}" target="_blank" rel="noopener">${u}</a>`);
+  return t; // newlines preserved by white-space:pre-wrap
+}
+function sanitizeHTML(html){
+  // basic sanitizer: remove scripts/event handlers
+  return html
+    .replace(/<script[\s\S]*?<\/script>/gi,"")
+    .replace(/<style[\s\S]*?<\/style>/gi,"")
+    .replace(/\son\w+\s*=\s*"[^"]*"/gi,"")
+    .replace(/\son\w+\s*=\s*'[^']*'/gi,"")
+    .replace(/javascript:/gi,"");
+}
+
+/* ------- RENDER ------- */
+function escHTML(s){ return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+
+/* ------- IMAGE EXTRACTION ------- */
+/* Filename is the substring of the title AFTER `imgStart` and BEFORE `imgEnd`.
+   - Blank start  → read from beginning of title.
+   - Blank end    → read until end of title.
+   Then ALL whitespace is removed from the result (per user spec). */
+function extractImageFilenameFromTitle(title){
+  if(!title) return "";
+  const startMark = (settings.imgStart||"");
+  const endMark   = (settings.imgEnd||"");
+  let s = 0;
+  if(startMark){
+    const i = title.indexOf(startMark);
+    if(i < 0) return "";
+    s = i + startMark.length;
+  }
+  let e = title.length;
+  if(endMark){
+    const j = title.indexOf(endMark, s);
+    if(j < 0) return "";
+    e = j;
+  }
+  const slice = title.slice(s, e);
+  // remove ALL whitespace from filename
+  return slice.replace(/\s+/g, "");
+}
+function extractImageUrlFromHTML(html){
+  if(!html) return "";
+  const m = html.match(/<img[^>]+src=["']([^"']+)["']/i);
+  return m ? m[1] : "";
+}
+function buildImageUrlForEvent(ev){
+  // SPECIAL: prefix — entire title after "SPECIAL:" (trimmed, spaces removed)
+  // is treated as the image filename inside the images folder.
+  const t = (ev.title || "").trim();
+  if(/^SPECIAL:/i.test(t)){
+    const raw = t.replace(/^SPECIAL:/i, "").trim().replace(/\s+/g, "");
+    if(raw){
+      let base = (settings.imgFolder||"").trim();
+      if(base && !base.endsWith("/")) base += "/";
+      const hasExt = /\.[a-z0-9]{2,5}$/i.test(raw);
+      return base + raw + (hasExt ? "" : (settings.imgExt||".jpg"));
+    }
+  }
+  // 1. From title marker → folder + name + ext
+  const fname = extractImageFilenameFromTitle(ev.title || "");
+  if(fname){
+    let base = (settings.imgFolder||"").trim();
+    if(base && !base.endsWith("/")) base += "/";
+    const hasExt = /\.[a-z0-9]{2,5}$/i.test(fname);
+    return base + fname + (hasExt ? "" : (settings.imgExt||".jpg"));
+  }
+  // 2. From description HTML
+  const fromDesc = extractImageUrlFromHTML(ev.descriptionHtml) ||
+                   extractImageUrlFromHTML(ev.description);
+  if(fromDesc) return fromDesc;
+  // 3. URL inside description text
+  const desc = ev.description || "";
+  const m = desc.match(/(https?:\/\/[^\s<>"']+\.(?:png|jpe?g|gif|webp|svg))/i);
+  return m ? m[0] : "";
+}
+
+function fmtFullDate(d){
+  // "Wednesday, 28 Apr 2026"
+  return `${DAY_FULL[d.getDay()]}, ${d.getDate()} ${MON_SHORT[d.getMonth()]} ${d.getFullYear()}`;
+}
+function fmtTimeRange(ev){
+  const s = ev.start, e = ev.end;
+  if(!e || sameDay(s, e||s)) return fmtTime(s) + (e ? ` – ${fmtTime(e)}` : "");
+  return `${fmtTime(s)} → ${DAY_SHORT[e.getDay()]} ${e.getDate()} ${MON_SHORT[e.getMonth()]} ${fmtTime(e)}`;
+}
+function fmtShortDate(d){ return `${DAY_FULL[d.getDay()]}, ${d.getDate()} ${MON_SHORT[d.getMonth()]} ${String(d.getFullYear()).slice(-2)}`; }
+
+/* 2-line time block (right side of NEXT/ACTIVE rows).
+   - All-day: shows "All Day" centered under the date.
+   - Same-day: top = date, bottom = "START → END".
+   - Multi-day: 3-column grid where each side has its own date above its time. */
+function timeBlockHTML(ev){
+  const s = ev.start, e = ev.end || ev.start;
+  if(ev.allDay){
+    // All-day single day → just the date, no "All Day" label, no time.
+    if(sameDay(s, e)){
+      return `<div class="tb">
+        <div class="tb-date">${fmtShortDate(s)}</div>
+      </div>`;
+    }
+    // All-day multi-day → START date  →  END date (no "All Day", no times).
+    return `<div class="tb-multi" style="grid-template-columns:auto auto auto">
+      <div class="tb-d">${fmtShortDate(s)}</div>
+      <div class="tb-arrow">→</div>
+      <div class="tb-d">${fmtShortDate(e)}</div>
+    </div>`;
+  }
+  if(sameDay(s, e)){
+    return `<div class="tb">
+      <div class="tb-date">${fmtShortDate(s)}</div>
+      <div class="tb-time">${fmtTime(s)}<span class="arrow">→</span>${fmtTime(e)}</div>
+    </div>`;
+  }
+  // Multi-day: each side gets its own date
+  return `<div class="tb-multi">
+    <div class="tb-d">${fmtShortDate(s)}</div>
+    <div></div>
+    <div class="tb-d">${fmtShortDate(e)}</div>
+    <div class="tb-t">${fmtTime(s)}</div>
+    <div class="tb-arrow">→</div>
+    <div class="tb-t">${fmtTime(e)}</div>
+  </div>`;
+}
+
+/* Upcoming row keeps the compact "#N  Date  Title  Time" format */
+function rowUpcoming(ev, idx){
+  const num = `#${idx}`;
+  const date = fmtFullDate(ev.start);
+  const title = escHTML(ev.title || "(No title)");
+  const time = ev.allDay
+    ? `<div class="up-time allday">All Day</div>`
+    : `<div class="up-time">${fmtTimeRange(ev)}</div>`;
+  return `<div class="up-row">
+    <div class="up-num">${num}</div>
+    <div class="up-date">${date}</div>
+    <div class="up-title">${title}</div>
+    ${time}
+  </div>`;
+}
+
+/* Active row: title left, 2-line time block right */
+function rowActive(ev){
+  const title = escHTML(ev.title || "(No title)");
+  return `<div class="ev-row">
+    <div class="ev-title">${title}</div>
+    ${timeBlockHTML(ev)}
+  </div>`;
+}
+
+/* Next row: title left, time block right; description below (full width) */
+function rowNext(ev){
+  const title = escHTML(ev.title || "(No title)");
+  const desc = renderDescription(ev);
+  return `<div class="ev-row">
+    <div class="ev-title">${title}</div>
+    ${timeBlockHTML(ev)}
+    ${desc ? `<div class="ev-desc">${desc}</div>` : ""}
+  </div>`;
+}
+
+let _events = [];
+function renderAll(){
+  const now = new Date();
+  const events = _events
+    .filter(e => e && e.start)
+    .filter(e => { const end = e.end || e.start; return end.getTime() >= now.getTime() - 60*1000; })
+    .sort((a,b) => a.start - b.start);
+
+  // Partition:
+  // NEXT = the single upcoming event whose start is nearest in future, OR if an event is currently
+  //        happening and it's the only one, it stays in NEXT. When a NEW event starts before NEXT ends,
+  //        NEXT is demoted to ACTIVE and the new one becomes NEXT.
+  // Active = currently running events BEFORE the next starting event time.
+  // Upcoming = rest.
+  // Algorithm: find first event with start > now (strictly). Active = events where start<=now<end that are not that one.
+  const strictlyFuture = events.filter(e => e.start.getTime() > now.getTime());
+  // Group "next" by start time — multiple events sharing the same start are all NEXT
+  let nextGroup = [];
+  if(strictlyFuture.length){
+    const t0 = strictlyFuture[0].start.getTime();
+    nextGroup = strictlyFuture.filter(e => e.start.getTime() === t0);
+  }
+  let next = nextGroup[0] || null;
+  const active = events.filter(e => e.start.getTime() <= now.getTime() && (e.end||e.start).getTime() > now.getTime());
+
+  // SPECIAL promotion: any event whose title starts with "SPECIAL:" and that
+  // begins within the configured look-ahead window is promoted into ACTIVE
+  // immediately, and stays there until its end time. We pull such events out
+  // of nextGroup if present so they aren't double-listed.
+  const specialDays = Math.max(1, Number(settings.specialDays)||30);
+  const windowEnd = now.getTime() + specialDays*24*60*60*1000;
+  const isSpecial = ev => /^SPECIAL:/i.test((ev.title||"").trim());
+  for(const ev of events){
+    if(!isSpecial(ev)) continue;
+    const endT = (ev.end||ev.start).getTime();
+    if(endT < now.getTime()) continue;
+    if(ev.start.getTime() > windowEnd) continue;
+    if(active.includes(ev)) continue;
+    active.push(ev);
+  }
+  // If a promoted SPECIAL was the chosen NEXT, pick the following event as NEXT.
+  if(next && isSpecial(next) && active.includes(next)){
+    nextGroup = nextGroup.filter(e => e !== next);
+    if(!nextGroup.length){
+      const after = strictlyFuture.filter(e => !active.includes(e));
+      if(after.length){
+        const t0 = after[0].start.getTime();
+        nextGroup = after.filter(e => e.start.getTime() === t0);
+      }
+    }
+    next = nextGroup[0] || null;
+  }
+  if(!next){
+    // No strictly future event; if there's an active one, promote earliest-ending active to NEXT
+    if(active.length){
+      // pick one still running as NEXT (earliest end)
+      const sorted = [...active].sort((a,b)=> (a.end||a.start) - (b.end||b.start));
+      next = sorted[0];
+      nextGroup = [next];
+      const idx = active.indexOf(next);
+      if(idx>=0) active.splice(idx,1);
+    }
+  }
+  const afterNext = next
+    ? events.filter(e => !nextGroup.includes(e) && !active.includes(e) && e.start.getTime() > next.start.getTime())
+    : [];
+  const upcoming = afterNext.slice(0, Math.max(0, settings.maxUpcoming));
+
+  // ACTIVE section visibility
+  document.body.classList.toggle("no-active", active.length===0);
+  applyDynamicLayout(active.length);
+
+  // Render active
+  const ab = document.getElementById("activeBody");
+  ab.innerHTML = active.length ? active.map(rowActive).join("") : "";
+
+  // Render NEXT — single event OR carousel (list page + each event page)
+  renderNext(nextGroup, active);
+
+  // Render upcoming — numbered starting at 2 (Next is implicitly #1)
+  const ub = document.getElementById("upcomingBody");
+  ub.innerHTML = upcoming.length
+    ? upcoming.map((ev,i) => rowUpcoming(ev, i+2)).join("")
+    : `<div class="empty">No further events</div>`;
+
+  restartAutoScroll();
+}
+
+/* ------- NEXT RENDER ------- */
+function renderNext(group, activeGroup){
+  stopImageCarousel();
+  const nb = document.getElementById("nextBody");
+  const imgEvents = [...(activeGroup||[]), ...(group||[])];
+  if(!group || !group.length){
+    nb.innerHTML = `<div class="empty">No upcoming events</div>`;
+    setImagesForEvents(imgEvents);
+    return;
+  }
+  // List ALL events stacked: title + time block + description
+  nb.innerHTML = `<div class="next-wrap"><div class="next-stage">${
+    group.map(rowNext).join("")
+  }</div></div>`;
+  setImagesForEvents(imgEvents);
+}
+
+/* ------- IMAGE PANE — carousel across NEXT events that have images ------- */
+let _imgUrls = [];
+let _imgIdx = 0;
+let _imgTimer = null;
+let _imgProgressTimer = null;
+// Attempted candidate URLs (even ones that 404). Kept so the inline meta
+// can ALWAYS show the user where they should drop image files for the
+// currently shown ACTIVE/NEXT events, even when nothing matched.
+let _imgCandidates = [];
+// When a carousel rotates through several images we want to keep the pane a
+// stable width so the layout doesn't jitter every few seconds. We pick the
+// widest required width across the set (clamped to MAX) on first load and
+// reuse it for the remainder of the carousel. Reset whenever the event set
+// changes (setImagesForEvents).
+let _imgCarouselLockedPct = 0;
+
+function stopImageCarousel(){
+  if(_imgTimer){ clearTimeout(_imgTimer); _imgTimer=null; }
+  if(_imgProgressTimer){ clearInterval(_imgProgressTimer); _imgProgressTimer=null; }
+}
+
+/* Auto-fit the image pane width to the loaded image's natural aspect ratio.
+   The pane spans the same vertical area as the NEXT+UPCOMING rows; we read
+   that height and compute the width that would let the image render at its
+   native aspect without letterbox. The result is clamped between 18% and
+   60% of the viewport so the text column never disappears and a tiny image
+   doesn't shrink the pane to nothing. */
+function fitImageColumn(img){
+  if(!img || !img.naturalWidth || !img.naturalHeight) return;
+  const pane = img.closest(".sec-image");
+  if(!pane) return;
+  const aspect = img.naturalWidth / img.naturalHeight;
+  const paneH  = pane.clientHeight || 0;
+  if(!paneH) return;
+  const idealPx = paneH * aspect;
+  const vw = window.innerWidth || document.documentElement.clientWidth || 1;
+  let pct = (idealPx / vw) * 100;
+  // MAX comes from settings.imgWidth ("MAX Image Area"). Min keeps the pane
+  // visible when an image is very tall and narrow.
+  const maxPct = Math.min(60, Math.max(20, Number(settings.imgWidth)||40));
+  const minPct = 18;
+  if(pct < minPct) pct = minPct;
+  if(pct > maxPct) pct = maxPct;
+  // Carousel: lock to the widest needed width so the layout doesn't shift
+  // every few seconds. Never exceed the MAX.
+  if(_imgUrls.length > 1){
+    if(pct > _imgCarouselLockedPct) _imgCarouselLockedPct = pct;
+    pct = Math.min(maxPct, _imgCarouselLockedPct);
+  }
+  document.documentElement.style.setProperty("--img-col-w", pct.toFixed(2) + "%");
+}
+window.addEventListener("resize", () => {
+  const img = document.getElementById("evImg");
+  if(img && img.complete && img.naturalWidth) fitImageColumn(img);
+});
+
+/* Build the meta string. Status: "trying" | "ok" | "fail".
+   Shown ALWAYS when there is a candidate URL — painted in background colour
+   so the user can select/highlight it to read the full path. */
+function renderInlineMeta(url, status){
+  const inline = document.getElementById("imgInlineMeta");
+  if(!inline) return;
+  if(!url){
+    // No image is currently shown — but if we have candidate paths, list them
+    // so the user can hover/select to discover where to drop image files.
+    if(_imgCandidates && _imgCandidates.length){
+      const lines = [`No images found. Drop files at any of:`];
+      _imgCandidates.forEach(u => {
+        let a = u; try{ a = new URL(u, window.location.href).href; }catch(_){}
+        lines.push(`  • ${escHTML(a)}`);
+      });
+      inline.innerHTML = lines.join("\n");
+    }else{
+      inline.innerHTML = "";
+    }
+    return;
+  }
+  const img = document.getElementById("evImg");
+  let sizeStr = "";
+  if(status === "ok" && img){
+    const w = Math.round(img.clientWidth || img.offsetWidth || 0);
+    const h = Math.round(img.clientHeight || img.offsetHeight || 0);
+    const nw = img.naturalWidth || 0, nh = img.naturalHeight || 0;
+    sizeStr = ` - fitted ${w}×${h}` + (nw && nh ? ` (source ${nw}×${nh})` : "");
+  } else if(status === "trying"){
+    sizeStr = ` - loading…`;
+  } else if(status === "fail"){
+    sizeStr = ` - <span class="meta-fail">IMAGE NOT FOUND</span>`;
+  }
+  // absolute resolved URL helps the user see exactly what was requested
+  let abs = url;
+  try{ abs = new URL(url, window.location.href).href; }catch(_){}
+  // First line: the URL currently displayed + status/size.
+  // If multiple candidates were resolved for the event, list every one of
+  // them on its own line so the user can verify which files matched the
+  // event-name logic. The current one is marked with a leading "▶".
+  const lines = [` - ${escHTML(abs)}${sizeStr}`];
+  if(_imgUrls && _imgUrls.length > 1){
+    lines.push(`Matched ${_imgUrls.length} file(s):`);
+    _imgUrls.forEach((u, i) => {
+      let a = u;
+      try{ a = new URL(u, window.location.href).href; }catch(_){}
+      const marker = (i === _imgIdx) ? "▶" : " ";
+      lines.push(`  ${marker} ${escHTML(a)}`);
+    });
+  }
+  inline.innerHTML = lines.join("\n");
+}
+
+function showImageAt(i){
+  const img = document.getElementById("evImg");
+  if(!img || !_imgUrls.length){
+    document.body.classList.remove("has-image","img-carousel");
+    if(img) img.removeAttribute("src");
+    renderInlineMeta("", "");
+    document.documentElement.style.removeProperty("--img-col-w");
+    return;
+  }
+  _imgIdx = ((i % _imgUrls.length) + _imgUrls.length) % _imgUrls.length;
+  const url = _imgUrls[_imgIdx];
+  // Reserve the 40% image pane immediately so the layout splits even before
+  // the network request returns (and stays split if the file 404s, so the
+  // user can read the attempted path).
+  document.body.classList.add("has-image");
+  document.body.classList.toggle("img-carousel", _imgUrls.length > 1);
+  renderInlineMeta(url, "trying");
+  img.onerror = () => {
+    renderInlineMeta(url, "fail");
+    // hide the broken <img> graphic but KEEP the pane reserved so the
+    // user can still see/select the attempted path in the meta line.
+    img.removeAttribute("src");
+    // try the next candidate (if any) without collapsing the pane
+    if(_imgUrls.length > 1){
+      _imgUrls.splice(_imgIdx, 1);
+      setTimeout(() => showImageAt(_imgIdx), 50);
+    } else {
+      // No remaining candidates — collapse the image column to 0%
+      // (keep .has-image so the meta/hover hint remains accessible).
+      document.documentElement.style.setProperty("--img-col-w", "0%");
+    }
+  };
+  img.onload = () => {
+    requestAnimationFrame(() => {
+      fitImageColumn(img);
+      renderInlineMeta(url, "ok");
+    });
+  };
+  img.src = url;
+
+  // schedule next image only if we have multiple images
+  stopImageCarousel();
+  if(_imgUrls.length > 1){
+    const delayMs = Math.max(2, Number(settings.carouselSec)||5) * 1000;
+    const startedAt = Date.now();
+    const bar = document.getElementById("imgProgressBar");
+    if(bar) bar.style.width = "0%";
+    _imgProgressTimer = setInterval(() => {
+      const pct = Math.min(100, ((Date.now()-startedAt)/delayMs)*100);
+      if(bar) bar.style.width = pct.toFixed(1) + "%";
+      if(pct >= 100){ clearInterval(_imgProgressTimer); _imgProgressTimer=null; }
+    }, 100);
+    _imgTimer = setTimeout(() => showImageAt(_imgIdx + 1), delayMs);
+  }
+}
+
+function setImagesForEvents(events){
+  stopImageCarousel();
+  _imgCarouselLockedPct = 0; // new event set → recompute stable carousel width
+  const seen = new Set();
+  const urls = [];
+  // wildcardTokens collected so we can expand them after the initial render.
+  // Every event URL is also expanded automatically: we look for sibling
+  // files with a numerical suffix (name.jpg, name1.jpg, name2.jpg ...) so
+  // the user only has to drop in additional files — no `*` required.
+  const wildcards = [];
+  const candidates = [];
+  for(const ev of (events||[])){
+    const u = buildImageUrlForEvent(ev);
+    if(!u) continue;
+    candidates.push(u);
+    if(u.includes("*")){
+      wildcards.push(u);
+      continue;
+    }
+    if(!seen.has(u)){ seen.add(u); urls.push(u); }
+    // Auto-probe numeric siblings of the base name (e.g. name1, name2 …).
+    // We synthesize a wildcard pattern by inserting `*` before the
+    // extension and let expandWildcards() handle the rest.
+    const wc = autoSiblingPattern(u);
+    if(wc) wildcards.push(wc);
+  }
+  _imgCandidates = candidates;
+  _imgUrls = urls;
+  _imgIdx = 0;
+  // If we have any wildcards, try to expand them. While probing, keep the
+  // pane open if we already have anything, otherwise wait for first hit.
+  if(wildcards.length){
+    document.body.classList.add("has-image"); // reserve pane optimistically
+    expandWildcards(wildcards).then(extra => {
+      for(const u of extra){
+        if(!seen.has(u)){ seen.add(u); urls.push(u); }
+      }
+      _imgUrls = urls;
+      _imgIdx = 0;
+      if(!urls.length){
+        document.body.classList.remove("has-image","img-carousel");
+        const img = document.getElementById("evImg");
+        if(img) img.removeAttribute("src");
+        renderInlineMeta("", "");
+        return;
+      }
+      showImageAt(0);
+    });
+    if(urls.length) showImageAt(0);
+    return;
+  }
+  if(!urls.length){
+    document.body.classList.remove("has-image","img-carousel");
+    const img = document.getElementById("evImg");
+    if(img) img.removeAttribute("src");
+    renderInlineMeta("", "");
+    return;
+  }
+  showImageAt(0);
+}
+
+/* From a base URL like "/img/festival.jpg" return "/img/festival*.jpg" so
+   expandWildcards() will probe festival1, festival2 … This is how we
+   auto-detect numbered sibling files without requiring the user to put a
+   `*` in the title. If the base already ends with a digit (e.g. shiv2.jpg)
+   we strip the trailing digits first so we still find shiv1, shiv2, … */
+function autoSiblingPattern(url){
+  if(!url || url.includes("*")) return "";
+  const m = url.match(/^(.*?)(\.[a-z0-9]{2,5})?$/i);
+  const stem = m ? m[1] : url;
+  const ext  = m && m[2] ? m[2] : "";
+  const cleanStem = stem.replace(/\d+$/, "");
+  return cleanStem + "*" + ext;
+}
+
+/* Probe `name*.ext` style URLs by sequentially loading name1, name2 ...
+   until two consecutive 404s. Returns an ordered list of resolved URLs. */
+function probeOne(url){
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => resolve(true);
+    img.onerror = () => resolve(false);
+    img.src = url;
+  });
+}
+async function expandWildcards(wcUrls){
+  const out = [];
+  for(const wc of wcUrls){
+    let misses = 0;
+    for(let n = 1; n <= 50; n++){
+      const candidate = wc.replace(/\*/g, String(n));
+      // small per-request timeout via Promise.race
+      const ok = await Promise.race([
+        probeOne(candidate),
+        new Promise(r => setTimeout(() => r(false), 4000))
+      ]);
+      if(ok){ out.push(candidate); misses = 0; }
+      else { misses++; if(misses >= 2 && n > 1) break; if(misses >= 3) break; }
+    }
+  }
+  return out;
+}
+
+/* ------- AUTO-SCROLL ------- */
+let scrollTimers = [];
+function stopAutoScroll(){
+  scrollTimers.forEach(t => clearInterval(t));
+  scrollTimers = [];
+}
+function restartAutoScroll(){
+  stopAutoScroll();
+  if(!settings.autoScroll) return;
+  const pxPerSec = Number(settings.scrollSpeed)||30;
+  const intervalMs = 50;
+  const step = pxPerSec * intervalMs / 1000;
+  ["activeBody","nextBody","upcomingBody"].forEach(id => {
+    const el = document.getElementById(id);
+    if(!el) return;
+    let dir = 1;
+    const t = setInterval(() => {
+      if(el.scrollHeight <= el.clientHeight + 2) return;
+      el.scrollTop += step*dir;
+      if(el.scrollTop + el.clientHeight >= el.scrollHeight - 1){ dir = -1; }
+      else if(el.scrollTop <= 0){ dir = 1; }
+    }, intervalMs);
+    scrollTimers.push(t);
+  });
+}
+
+/* ------- REFRESH LOOP ------- */
+let refreshTimer = null;
+async function refreshICS(){
+  const url = HARDCODED_ICAL_URL || settings.url;
+  if(!url){
+    _events = [];
+    renderAll();
+    updateSyncStatus();
+    return;
+  }
+  try{
+    const text = await fetchICS(url);
+    _events = parseICS(text);
+    settings.lastSyncAt = Date.now();
+    settings.lastSyncOk = true;
+    settings.lastSyncMsg = `${_events.length} events`;
+    saveSettings(settings);
+    renderAll();
+  }catch(e){
+    settings.lastSyncAt = Date.now();
+    settings.lastSyncOk = false;
+    settings.lastSyncMsg = e.message || "Error";
+    saveSettings(settings);
+  }
+  updateSyncStatus();
+}
+function scheduleRefresh(){
+  if(refreshTimer) clearInterval(refreshTimer);
+  refreshTimer = setInterval(refreshICS, Math.max(1, Number(settings.refreshMin)||5) * 60 * 1000);
+}
+
+/* ------- HEADER ALIGNMENT ------- */
+function applyHeader(){
+  const wrap = document.getElementById("titleWrap");
+  wrap.className = "title-wrap " + (settings.titleAlign||"left");
+  document.getElementById("titleText").textContent = settings.title || "Calendar";
+}
+
+/* ------- SETTINGS UI ------- */
+function openSettings(){
+  document.getElementById("fTitle").value = settings.title || "";
+  document.getElementById("fAlign").value = settings.titleAlign;
+  document.getElementById("fClock").value = settings.clockFormat;
+  const urlInput = document.getElementById("fUrl");
+  urlInput.value = HARDCODED_ICAL_URL || settings.url || "";
+  urlInput.readOnly = !!HARDCODED_ICAL_URL;
+  document.getElementById("urlLockNote").style.display = HARDCODED_ICAL_URL ? "inline" : "none";
+  document.getElementById("fRefresh").value = String(settings.refreshMin);
+  document.getElementById("fMax").value = String(settings.maxUpcoming);
+  document.getElementById("fH1").value = settings.splits.h1;
+  document.getElementById("fH2").value = settings.splits.h2;
+  document.getElementById("fH3").value = settings.splits.h3;
+  document.getElementById("fH4").value = settings.splits.h4;
+  document.getElementById("fAutoScroll").checked = !!settings.autoScroll;
+  document.getElementById("fScrollSpeed").value = String(settings.scrollSpeed);
+  document.getElementById("fImgW").value = settings.imgWidth;
+  updateImgWHint();
+  document.getElementById("fCarouselSec").value = settings.carouselSec;
+  document.getElementById("fImgFolder").value = settings.imgFolder || "";
+  document.getElementById("fImgExt").value = settings.imgExt || ".jpg";
+  document.getElementById("fImgStart").value = settings.imgStart ?? "|";
+  document.getElementById("fImgEnd").value = settings.imgEnd ?? "🛕";
+  document.getElementById("fSpecialDays").value = settings.specialDays ?? 30;
+  renderThemes();
+  updateSyncStatus();
+  document.getElementById("overlay").classList.add("open");
+}
+function closeSettings(){ document.getElementById("overlay").classList.remove("open"); }
+
+function updateSyncStatus(){
+  const el = document.getElementById("syncStatus");
+  if(!el) return;
+  if(!settings.lastSyncAt){ el.innerHTML = `<span class="sync-pill sync-err">Never synced</span>`; return; }
+  const d = new Date(settings.lastSyncAt);
+  const when = `${d.getDate()} ${MON_SHORT[d.getMonth()]} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+  const pill = settings.lastSyncOk ? `<span class="sync-pill sync-ok">OK</span>` : `<span class="sync-pill sync-err">Failed</span>`;
+  el.innerHTML = `${pill}<span>Last sync: ${when} — ${settings.lastSyncMsg||""}</span>`;
+}
+
+let currentTier = "light";
+function renderThemes(){
+  currentTier = settings.themeTier || "dark";
+  document.querySelectorAll("#themeTabs .tab").forEach(t => t.classList.toggle("active", t.dataset.tier===currentTier));
+  const grid = document.getElementById("themeGrid");
+  const list = THEMES[currentTier] || [];
+  grid.innerHTML = list.map((t,i) => `
+    <button class="theme-card ${(currentTier===settings.themeTier && i===settings.themeIndex)?'active':''}" data-i="${i}" style="background:${t.bg};color:${t.fg}">
+      <div class="theme-name">${t.name}</div>
+      <div class="theme-swatches">
+        <div class="theme-sw" style="background:${t.accent}"></div>
+        <div class="theme-sw" style="background:${t.accent2}"></div>
+        <div class="theme-sw" style="background:${t.bgActive}"></div>
+        <div class="theme-sw" style="background:${t.bgNext}"></div>
+        <div class="theme-sw" style="background:${t.bgUpcoming}"></div>
+      </div>
+    </button>
+  `).join("");
+  grid.querySelectorAll(".theme-card").forEach(card => {
+    card.addEventListener("click", () => {
+      settings.themeTier = currentTier;
+      settings.themeIndex = Number(card.dataset.i);
+      grid.querySelectorAll(".theme-card").forEach(c=>c.classList.remove("active"));
+      card.classList.add("active");
+      applyTheme();
+    });
+  });
+}
+
+document.getElementById("themeTabs").addEventListener("click", (e) => {
+  const b = e.target.closest(".tab");
+  if(!b) return;
+  currentTier = b.dataset.tier;
+  document.querySelectorAll("#themeTabs .tab").forEach(t => t.classList.toggle("active", t===b));
+  const list = THEMES[currentTier];
+  const grid = document.getElementById("themeGrid");
+  grid.innerHTML = list.map((t,i) => `
+    <button class="theme-card ${(currentTier===settings.themeTier && i===settings.themeIndex)?'active':''}" data-i="${i}" style="background:${t.bg};color:${t.fg}">
+      <div class="theme-name">${t.name}</div>
+      <div class="theme-swatches">
+        <div class="theme-sw" style="background:${t.accent}"></div>
+        <div class="theme-sw" style="background:${t.accent2}"></div>
+        <div class="theme-sw" style="background:${t.bgActive}"></div>
+        <div class="theme-sw" style="background:${t.bgNext}"></div>
+        <div class="theme-sw" style="background:${t.bgUpcoming}"></div>
+      </div>
+    </button>
+  `).join("");
+  grid.querySelectorAll(".theme-card").forEach(card => {
+    card.addEventListener("click", () => {
+      settings.themeTier = currentTier;
+      settings.themeIndex = Number(card.dataset.i);
+      grid.querySelectorAll(".theme-card").forEach(c=>c.classList.remove("active"));
+      card.classList.add("active");
+      applyTheme();
+    });
+  });
+});
+
+document.getElementById("btnSettings").addEventListener("click", openSettings);
+document.getElementById("btnCancel").addEventListener("click", () => { settings = loadSettings(); applyTheme(); applySplits(); applyHeader(); closeSettings(); });
+document.getElementById("btnSave").addEventListener("click", () => {
+  settings.title = document.getElementById("fTitle").value.trim() || "Calendar";
+  settings.titleAlign = document.getElementById("fAlign").value;
+  settings.clockFormat = document.getElementById("fClock").value;
+  if(!HARDCODED_ICAL_URL){
+    settings.url = document.getElementById("fUrl").value.trim();
+  }
+  settings.refreshMin = Number(document.getElementById("fRefresh").value);
+  settings.maxUpcoming = Number(document.getElementById("fMax").value);
+  settings.splits = {
+    h1:Math.max(5, Number(document.getElementById("fH1").value)||10),
+    h2:Math.max(0, Number(document.getElementById("fH2").value)||20),
+    h3:Math.max(10, Number(document.getElementById("fH3").value)||38),
+    h4:Math.max(10, Number(document.getElementById("fH4").value)||32),
+  };
+  settings.autoScroll = document.getElementById("fAutoScroll").checked;
+  settings.scrollSpeed = Number(document.getElementById("fScrollSpeed").value);
+  settings.imgWidth = Math.min(60, Math.max(20, Number(document.getElementById("fImgW").value)||40));
+  settings.carouselSec = Math.max(2, Number(document.getElementById("fCarouselSec").value)||5);
+  settings.imgFolder = document.getElementById("fImgFolder").value.trim();
+  settings.imgExt = document.getElementById("fImgExt").value;
+  settings.imgStart = document.getElementById("fImgStart").value;
+  settings.imgEnd = document.getElementById("fImgEnd").value;
+  settings.specialDays = Math.max(1, Number(document.getElementById("fSpecialDays").value)||30);
+  saveSettings(settings);
+  applyTheme();
+  applySplits();
+  applyHeader();
+  tickClock();
+  scheduleRefresh();
+  refreshICS();
+  closeSettings();
+});
+
+/* ------- FULLSCREEN ------- */
+document.getElementById("btnFullscreen").addEventListener("click", async () => {
+  try{
+    if(!document.fullscreenElement){
+      await document.documentElement.requestFullscreen();
+      document.body.classList.add("fullscreen");
+      // Force a fresh sync when entering fullscreen
+      refreshICS();
+    }else{
+      await document.exitFullscreen();
+      document.body.classList.remove("fullscreen");
+    }
+  }catch{ document.body.classList.toggle("fullscreen"); }
+});
+document.addEventListener("fullscreenchange", () => {
+  if(document.fullscreenElement){
+    document.body.classList.add("fullscreen");
+    refreshICS();
+  }else{
+    document.body.classList.remove("fullscreen");
+  }
+});
+let cursorT;
+document.addEventListener("mousemove", () => {
+  if(!document.body.classList.contains("fullscreen")) return;
+  document.body.classList.add("showcursor");
+  clearTimeout(cursorT);
+  cursorT = setTimeout(() => document.body.classList.remove("showcursor"), 2500);
+});
+
+/* ------- INIT ------- */
+/* Dynamic preferred-image-size hint inside Settings: recompute whenever the
+   user edits the MAX value. Suggests a target width in pixels for the chosen
+   percentage (based on the current viewport) and a recommended export size
+   ~2× that for crisp rendering on hi-dpi displays. */
+function updateImgWHint(){
+  const input = document.getElementById("fImgW");
+  const hint  = document.getElementById("fImgWHint");
+  if(!input || !hint) return;
+  const pct = Math.min(60, Math.max(20, Number(input.value)||40));
+  const vw  = window.innerWidth || 1920;
+  // Use the actual NEXT+UPCOMING area height as the pane height proxy.
+  const paneH = Math.round(window.innerHeight * 0.75);
+  const widthPx = Math.round(vw * pct / 100);
+  // Recommend exporting at 2× for retina/4K screens
+  hint.innerHTML =
+    `Preferred image size: <b>${widthPx}×${paneH}px</b> ` +
+    `on this screen (export at ~<b>${widthPx*2}×${paneH*2}px</b> for crisp rendering).`;
+}
+document.addEventListener("input", (e) => {
+  if(e.target && e.target.id === "fImgW") updateImgWHint();
+});
+window.addEventListener("resize", updateImgWHint);
+
+applyTheme();
+applySplits();
+applyHeader();
+tickClock();
+renderAll();
+refreshICS();
+scheduleRefresh();
+
+/* Auto-enter fullscreen on first user interaction (browsers require a
+   user gesture). Also try immediately in case the page was opened from a
+   shortcut or kiosk launcher that allows it. */
+function tryEnterFullscreen(){
+  if(document.fullscreenElement) return;
+  const p = document.documentElement.requestFullscreen?.();
+  if(p && p.then) p.then(() => document.body.classList.add("fullscreen")).catch(()=>{});
+}
+window.addEventListener("load", () => { try{ tryEnterFullscreen(); }catch{} });
+const _fsOnce = () => {
+  tryEnterFullscreen();
+  window.removeEventListener("click", _fsOnce);
+  window.removeEventListener("keydown", _fsOnce);
+  window.removeEventListener("touchstart", _fsOnce);
+};
+window.addEventListener("click", _fsOnce, { once:false });
+window.addEventListener("keydown", _fsOnce, { once:false });
+window.addEventListener("touchstart", _fsOnce, { once:false });
+</script>
+</body>
+</html>
