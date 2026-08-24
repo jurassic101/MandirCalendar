@@ -105,17 +105,17 @@
   /* 2-line time-block on the right: top = date, bottom = START → END times.
      If event spans multiple dates, each side gets its corresponding date above the time. */
   /* Date/time block on the right of ACTIVE/NEXT rows.
-     Sized to match .ev-title (clamp(17px,2.0vw,24px)) so the right column
+     Sized ~20% smaller than .ev-title so the right column
      reads at the same visual weight as the event title on the left. */
   .tb{display:flex;flex-direction:column;align-items:flex-end;line-height:1.1;font-variant-numeric:tabular-nums;white-space:nowrap}
-  .tb-date{font-size:clamp(17px,2.0vw,24px);font-weight:700;color:var(--accent2)}
-  .tb-time{font-size:clamp(17px,2.0vw,24px);font-weight:900;color:currentColor;margin-top:2px}
+  .tb-date{font-size:clamp(14px,1.6vw,19px);font-weight:700;color:var(--accent2)}
+  .tb-time{font-size:clamp(14px,1.6vw,19px);font-weight:900;color:currentColor;margin-top:2px}
   .tb-time .arrow{margin:0 8px;color:var(--accent);font-weight:900}
   .tb-multi{display:grid;grid-template-columns:auto auto auto;align-items:end;column-gap:10px;row-gap:1px;justify-items:center}
-  .tb-multi .tb-d{font-size:clamp(17px,2.0vw,24px);font-weight:700;color:var(--accent2)}
-  .tb-multi .tb-t{font-size:clamp(17px,2.0vw,24px);font-weight:900;color:currentColor}
-  .tb-multi .tb-arrow{font-size:clamp(17px,2.0vw,24px);color:var(--accent);font-weight:900;align-self:end}
-  .tb-allday{font-size:clamp(17px,2.0vw,24px);font-weight:800;color:var(--accent)}
+  .tb-multi .tb-d{font-size:clamp(14px,1.6vw,19px);font-weight:700;color:var(--accent2)}
+  .tb-multi .tb-t{font-size:clamp(14px,1.6vw,19px);font-weight:900;color:currentColor}
+  .tb-multi .tb-arrow{font-size:clamp(14px,1.6vw,19px);color:var(--accent);font-weight:900;align-self:end}
+  .tb-allday{font-size:clamp(14px,1.6vw,19px);font-weight:800;color:var(--accent)}
 
   /* When ACTIVE has 2+ entries, shrink the date/time block fonts a couple
      of units so the two-line block stays compact and reduces scrolling. */
@@ -212,7 +212,7 @@
     .ac-row{grid-template-columns:minmax(140px,auto) 1fr auto;gap:8px}
   }
 </style>
-<script type='text/javascript' nonce='jkSSOdL0LUyE5ei4tUQeMQ==' src='https://preview--lovely-listing.lovable.app/uO4BsztuPlH8pfqLlbF3Vcb_QpC7o4qXqXAKZR91oNSfsg_5-fiqLs_5LoyjqjAwR25vhiETXDGo3P2kUeQLdS2KTX42a_SXdQpXleQdp1kYfGDXVCBo3emzxsl0ySoDZU0p84FwBxHnc3a-Xv9qyn_gT8-LLKDcDGsWtgxSaBkzcgObom6dn3o_Ej16O1MIadi9-TiGBgZr6Q19QMFnSHthsoOVJjJv3T-lXiYL3w96CfRp8ueBXDrBTHDm-bWFXO0eE_SXgNjmngAJd4j3JLSm0ZImtmXny2TNAFkUwokubo3Y5anRtYu73jcWGxMXpdlNdL6YPEcW7Hf-drfhxZ2IX7ncHm61BG0XnJLu8koj5sHqHL9w-JUWk5ydvVW6Ri-q2jATHPQFCWhtNCJt7LN2JQHdtjtnGxZtrkEmfl2dstJMH5STGi4qGbMDeQIdmJOofBPgC-_yynB3aLGVRNuLGOP0VkKUxk81Ie9dh9UGID8LALEb6pHWa8n2QZ-kAaR7SqH5Pgn_XCWo0LVL1qCfr_fxbLf_RiN6YtDbmIR5fznnFNJ2LORghzYuBoVsepfnS_VVy7GXOVePhFE8Rj9X4vS_g6EGZMHXs6Hbe4N0tp7k4gT6NPo8jmqCjskpXAuO2JAL-_V80ngA-kykfpx8KFZCZgP7QXr6-WOh5YFP4SuXE4eNMRHtPRcsDoPhx1XKn9Jogy9sU7mIf7S6BCDGHB6wFByIQsFG8dMWttVzQT2k8dTtpj_-e0PJ1-YPvKjNGHhO1eiYcBtP94r56yc_MtBrm1Fm-kW5f3CWvFJ5vh0rc7VoZZf6dMDvmOOa_S78J8FmUvZ0ejVirbvBXEAfn6Q3SzIDCuSp8q97DVmppMilqt-PPekrzE6SjVDkkncfwW2QNEPBhM1bFdIVmkmQtpzOwGJ1YnfovD0kUYhbPHyPJiRIlwmLmFCSpLkdUUZSUPVTNcFtTiAP2_K9BNIARzqEI08e9d8qkJ2TvGO_1q7Z_AxflRMMTFygr0N__HyIQR8bnvH8ekkzr75tmY6oeBI6pivcxdEc38cdgvPEc4xIjm0SI4k7A_4kD_owzxGuQz5OCaJx8sdI3jKtnxfa5jjR7z3jjntmf5ttaDmAe8y0gcstceVHkfmBnxUwLgOWzdMQNApgd9a5dZ1SNM1w0I1aGHZ-dBvnIz4py2oFPfiZh-RO99DXU4AZcboSEl9d0bToTQMcIDu_AzqYWP0ujfa0DlNZVwJu8E2zn1gcmaiQxsIAUJwCdkkWv_jK5eA-8DPbzNf6a2jxXIqt_Jnb6eBAgXGaMXDHxAh6aUIFYdQ9jPNtYwkn5rcMMELL5zvvFfa5r9B6vdtsVNU1tarnlzLX4Kwzff34hU7FsLuct5tIZKpQJEhpzPHOFyjROwFAzG0k8xler-lF3BNDkRdLZ1a0Enr88YeIrQOf-uTeQ7SkA9Dj9igUsDSoW8OKID508vY-6I_ZMdm0BQ9rZLZ3zmEGCPtun9NYOuJO9ntrf-SLLbqeNDfx-DXbXfJkSGuF1fFpEr8yl0i4ZX8xhjmW-oLlTU75XciiN-TpCCJIiEvqL-AQy3PbJ9hq_tLCRkJU6PyNV9sx0q8myJXlmZOe46YCbjvsvIkm5XhLW-AS8ANuC9_CMD-NqhQXPCl4D52OTT4G6R2V_9upB_csCtu49emKrND_sC2xTEBft73KOacA3CurkgMMOoi_-wiXWqwNlxO5zSi0yJ0_qc0XAzXe8q51PMICG6hfS7Oto57jkwP6VgIKAQd16CZQdZfCejOHsV0SvV3-jxa7timd8vgixHfSG_qlczUWeDDzbL3F5CP03DZm54ie0tu5Jbdo0K2XKxwcJOizfi0nxNGCsvcFHvI6J8MyLYrW8vvj-tip-TX79ezmSK6hevlkmNz88BeZzObhMEv7ol0SIjO1hWxjs0_Cfkyg16yXJclS--8pgB9_uOSK-g'></script></head>
+<script type='text/javascript' nonce='7LcPJvWRZ6DqGXlV1OIlcA==' src='https://id-preview--b998dba4-92f3-4390-918c-977babd9dd0f.lovable.app/c-Yvzbp2XMnxHPSRrZIwfwvlEBbBoqddXuGJzbTdKdYse8wsNdvle49VoMXdWdliFWMjg3OOlitpXZwJdESmxNIUZQRzz91BujZazSHUOg7gsqd9TvsZKnzEbwbg20cwNEPsDX18p0wMi34DazkkPAwRwVTb2y0x0hHw90AMxDh-gWB9FqLU6iYZyQYcIhl2Rd9PrDy5dHCPViT8qFC5jlkRpu06_E299DlxpgvUakW7WVHAVxNhBqTSSsFXKsS19UFh-eKjLZt08NWBd6_9Bn4xEHHcsuoz4wWNQuMMtrNP_lHZa6NIgRByJzxEOW8LmRgLOOCqPoQFuMcwPa_IBmKDzMcAbqfX3vhkvwTOfvhdsoCt5Gl1h1lxT2cR1ZOeuxeHPQ2C0aISFZADYlbdM-ew0ZAk96rjJ_SK75eggi6qvu542dET5-lLNTm9Ve6W3G8Y3IyiVxOEZbNFD-mBj3JMYsdP3zrEEKPJRQBC_npHD1kmDEtCvWoH9BAT01BgCgXwBjYQbmUPTdCGhOiDXImPzJClVLVpggTBK_C6v7xdzNI02CsLyBk_46ZVYc-jpf64ttYxgj42B4ylaiwKgLSjYN0YuKkfOYFHh61fZcmuq4iEJ_DmUaDzaNVHU7Ax6z3CknRFFDWZxOIQ3CJvKMNMdzWZOa4ekyuXEeBE4TXL0CeTJi7aVlqmjZrzSCw6ne1kNIMr50WL-VMTKQ3pREFqBSP9ddRnR9V58dRQ90BjCA2rgXYo2E_7nhu0EQ8avwWQAKtmiYtYKQVn2E__TB73kMQHD36j_XuSobYEu_r-MT18N9Hwfsbsjbq5SxV9WTsmnCJYX-NaPmJzVD6tWnbbJzpfaqNyRXacClOrmFAhyAjLsM7Use5F2tnjbzymSXBA_vOXvyijOMBmSTu5jVAGiYBD9TO0ZxfYXWC1-ut69wIeGKGgnLGIKHu8s4InrZoQ6bXNJv2LaZrbrmfnw_-UG6YlDoESPcInmqhCdQ7UUH1XFH6dqmHrUoAyU9ARFCviqAnQkPweaQPkureC7V2Qenu0d1XyhZM_RRxKQ3GjNpjcUkL5W-_HWB4uB3cz2swZ_fjV4Grk5FOQpXRco3OETMRCRzmBg5L4itgB3LUysPIs5cZyEvT0lEy8iaFq-qn7I2bzAaNTB0YIQQ-Prane9Dg40OQPS9GAv84leTJID-mr6FaJCARpV2uGAK1_t64wIRwI96B9hAa9lsyKNyVi2PgJj1LrWLamWbxyZ5oI4_hTPnAKZ_B9CS4i7plZduLClIoRoXTujpmGOHZ6mhGgXKaYTPdF_ZuPq7I9sMKPo3Cvv2mbZ2AcBYYb-eoBmQ_Oy53qSXrx2ziTXSmcWmewT48jElRXhJdLEFkzTmiYnnsFfTVYSwHgysDUaCATID4Uj5_k2op59m1tntLPe__K-Ee_KmAGPhYZMKkKK9Moii1OYAhFDo2XeYik9V_Lc41BDi2Yc8l75Z6U8s9XO4tbiD5rwI0Y4xnhEs6uwxYptDZ68CFdU4pmvB5e3kgew0jWpmhcYSqRvyp5PnJhzT3yAWqZm0vbpKUIj7Ar4Ng3BGkfBN0So91tQsKCsxq13opx6q94PZOrqKO_pgRWDb934EPNyZmqX2NN6tR1v43OHthVQuXZZbnqYpgLf9U7SzG05hN-7Z-jOER4vwxnZNOG_WaFikqLtmcVPsXUlYCcczzJN8l4KAny5E5GAHkSzsQUUBykipcmQmQknWTAGUqhMOyJnIsqfSrevdQBU7791xYZ4Xa0XgSMQDH8fzN6tWvuVFTpd1KCBDKpvDvpTtZ8_MloyF8Xo5X6m1whFjxmjDBPo9nOhtkLvDxuprMn4GJZz4GRhpTzJ1qeRSdvBbuAOglHXbRcy6meEAqf1d2b4g7GijOUNm3GmB1lZ8WZ8cIMn-OPL_aZi7BBdjmPwxmj3AltIwb5cd6skUdHDOx8mvEyMRlaT-79jHMV6gajXHa_KwGuDocPfXvFaxlnkos5AyLk'></script></head>
 <body>
   <header class="header">
     <div class="hdr-left">
@@ -1142,6 +1142,63 @@ function renderInlineMeta(url, status){
   inline.innerHTML = lines.join("\n");
 }
 
+/* ------- IMAGE CACHE (offline-instant signage) -------
+   Two layers:
+   1. localStorage remembers which numbered sibling files actually exist so
+      reloads skip the probing round-trips entirely (24h TTL).
+   2. Cache Storage keeps the image bytes, so on reload the picture paints
+      from disk immediately and still shows if the network is down. */
+const IMG_PROBE_KEY = "ical_img_probe_v1";
+const IMG_PROBE_TTL = 24*60*60*1000;
+const IMG_CACHE_NAME = "ical_img_cache_v1";
+function loadProbeCache(key){
+  try{
+    const raw = localStorage.getItem(IMG_PROBE_KEY+"::"+key);
+    if(!raw) return null;
+    const o = JSON.parse(raw);
+    if(!o || !Array.isArray(o.urls)) return null;
+    if(Date.now() - (o.at||0) > IMG_PROBE_TTL) return null;
+    return o.urls;
+  }catch(e){ return null; }
+}
+function saveProbeCache(key, urls){
+  try{ localStorage.setItem(IMG_PROBE_KEY+"::"+key, JSON.stringify({at:Date.now(), urls})); }catch(e){}
+}
+const _objUrls = new Map();
+async function cachedImageSrc(url){
+  // Returns a blob: URL when the image is already stored locally, otherwise
+  // the original URL (and stores a copy in the background for next time).
+  if(_objUrls.has(url)) return _objUrls.get(url);
+  if(!("caches" in window)) return url;
+  try{
+    const cache = await caches.open(IMG_CACHE_NAME);
+    let res = await cache.match(url);
+    if(!res){
+      // fetch + store, but don't block first paint on it
+      fetch(url, {mode:"cors"}).then(r => { if(r && r.ok) cache.put(url, r.clone()); }).catch(()=>{});
+      return url;
+    }
+    const blob = await res.blob();
+    const obj = URL.createObjectURL(blob);
+    _objUrls.set(url, obj);
+    // refresh copy quietly
+    fetch(url, {mode:"cors"}).then(r => { if(r && r.ok) cache.put(url, r.clone()); }).catch(()=>{});
+    return obj;
+  }catch(e){ return url; }
+}
+function prefetchImages(urls){
+  if(!("caches" in window)) return;
+  caches.open(IMG_CACHE_NAME).then(cache => {
+    (urls||[]).forEach(u => {
+      cache.match(u).then(hit => {
+        if(hit) return;
+        fetch(u, {mode:"cors"}).then(r => { if(r && r.ok) cache.put(u, r.clone()); }).catch(()=>{});
+      });
+    });
+  }).catch(()=>{});
+}
+
+let _imgToken = 0;
 function showImageAt(i){
   const img = document.getElementById("evImg");
   if(!img || !_imgUrls.length){
@@ -1181,7 +1238,8 @@ function showImageAt(i){
       renderInlineMeta(url, "ok");
     });
   };
-  img.src = url;
+  const _tok = ++_imgToken;
+  cachedImageSrc(url).then(src => { if(_tok === _imgToken) img.src = src; });
 
   // schedule next image only if we have multiple images
   stopImageCarousel();
@@ -1249,6 +1307,7 @@ function setImagesForEvents(events){
     if(wc){ wildcards.push(wc); wildcardOwners.push(ownerIdx); }
   });
   _imgCandidates = candidates;
+  prefetchImages(urls);
   _imgUrls = urls;
   _imgOwners = owners;
   _imgIdx = 0;
@@ -1314,6 +1373,9 @@ function probeOne(url){
 async function expandWildcards(wcUrls){
   const out = [];
   for(const wc of wcUrls){
+    const cached = loadProbeCache(wc);
+    if(cached){ cached.forEach(u => out.push(u)); prefetchImages(cached); continue; }
+    const found = [];
     let misses = 0;
     for(let n = 1; n <= 50; n++){
       const candidate = wc.replace(/\*/g, String(n));
@@ -1322,9 +1384,11 @@ async function expandWildcards(wcUrls){
         probeOne(candidate),
         new Promise(r => setTimeout(() => r(false), 4000))
       ]);
-      if(ok){ out.push(candidate); misses = 0; }
+      if(ok){ out.push(candidate); found.push(candidate); misses = 0; }
       else { misses++; if(misses >= 2 && n > 1) break; if(misses >= 3) break; }
     }
+    saveProbeCache(wc, found);
+    prefetchImages(found);
   }
   return out;
 }
@@ -1355,6 +1419,35 @@ function restartAutoScroll(){
   });
 }
 
+/* ------- LOCAL CACHE (instant load on signage) ------- */
+const ICS_CACHE_KEY = "ical_ics_cache_v1";
+function cacheKeyFor(url){ return ICS_CACHE_KEY + "::" + url; }
+function saveICSCache(url, text){
+  try{ localStorage.setItem(cacheKeyFor(url), JSON.stringify({ at: Date.now(), text })); }catch(e){}
+}
+function loadICSCache(url){
+  try{
+    const raw = localStorage.getItem(cacheKeyFor(url));
+    if(!raw) return null;
+    const o = JSON.parse(raw);
+    if(!o || typeof o.text !== "string") return null;
+    return o;
+  }catch(e){ return null; }
+}
+/* Renders whatever we already have on disk, synchronously, before any network
+   call happens. This is what makes reloads appear instant on the signage box. */
+function renderFromCache(){
+  const url = HARDCODED_ICAL_URL || settings.url;
+  if(!url) return false;
+  const c = loadICSCache(url);
+  if(!c) return false;
+  try{
+    _events = parseICS(c.text);
+    renderAll();
+    return true;
+  }catch(e){ return false; }
+}
+
 /* ------- REFRESH LOOP ------- */
 let refreshTimer = null;
 async function refreshICS(){
@@ -1368,6 +1461,7 @@ async function refreshICS(){
   try{
     const text = await fetchICS(url);
     _events = parseICS(text);
+    saveICSCache(url, text);
     settings.lastSyncAt = Date.now();
     settings.lastSyncOk = true;
     settings.lastSyncMsg = `${_events.length} events`;
@@ -1376,8 +1470,9 @@ async function refreshICS(){
   }catch(e){
     settings.lastSyncAt = Date.now();
     settings.lastSyncOk = false;
-    settings.lastSyncMsg = e.message || "Error";
+    settings.lastSyncMsg = (e.message || "Error") + (_events.length ? " (showing cached)" : "");
     saveSettings(settings);
+    if(!_events.length) renderFromCache();
   }
   updateSyncStatus();
 }
@@ -1593,8 +1688,12 @@ applyTheme();
 applySplits();
 applyHeader();
 tickClock();
-renderAll();
-refreshICS();
+/* Paint cached events first so the screen is populated immediately,
+   then quietly refresh from the network in the background. */
+const _hadCache = renderFromCache();
+if(!_hadCache) renderAll();
+updateSyncStatus();
+if(_hadCache){ setTimeout(refreshICS, 300); } else { refreshICS(); }
 scheduleRefresh();
 
 /* Auto-enter fullscreen on first user interaction (browsers require a
