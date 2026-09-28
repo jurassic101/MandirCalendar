@@ -85,22 +85,24 @@
   .sec-active{background:var(--bg-active);color:var(--fg-active)}
   .sec-next{background:var(--bg-next);color:var(--fg-next)}
   .sec-upcoming{background:var(--bg-upcoming);color:var(--fg-upcoming)}
-  .sec-label{font-size:12px;font-weight:900;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);padding:2px 4px 10px;flex-shrink:0}
+  .sec-label{font-size:clamp(15px,1.25vw,22px);font-weight:900;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);padding:2px 4px 8px;flex-shrink:0}
   /* extra right padding so when the scrollbar appears the time column
      does not sit right against it */
   .sec-body{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;padding-right:14px}
   .sec-body::-webkit-scrollbar{width:6px}
   .sec-body::-webkit-scrollbar-thumb{background:color-mix(in oklab,var(--muted) 40%,transparent);border-radius:3px}
 
-  /* UPCOMING ROW — "#N  Wednesday, 28 Apr 2026   Title …  10:00 – 11:00" */
-  .up-row{display:grid;grid-template-columns:46px minmax(220px,auto) 1fr auto;align-items:center;gap:14px;padding:6px 6px;border-radius:10px;min-width:0}
+  /* UPCOMING ROW — number and title left; complete date/time block right. */
+  .up-row{display:grid;grid-template-columns:clamp(46px,4vw,66px) minmax(0,1fr) auto;align-items:center;gap:clamp(10px,1.2vw,20px);padding:7px 6px;border-radius:10px;min-width:0}
   .up-row + .up-row{margin-top:4px;border-top:1px solid color-mix(in oklab,var(--muted) 18%,transparent)}
-  .up-num{font-size:clamp(15px,1.6vw,18px);font-weight:900;color:var(--accent);font-variant-numeric:tabular-nums}
-  .up-date{font-size:clamp(13px,1.4vw,16px);font-weight:700;color:var(--accent2);white-space:nowrap;font-variant-numeric:tabular-nums}
-  .up-title{font-size:clamp(15px,1.6vw,18px);font-weight:700;color:currentColor;min-width:0;
-    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .up-time{font-size:clamp(13px,1.4vw,16px);font-weight:800;color:currentColor;font-variant-numeric:tabular-nums;white-space:nowrap}
-  .up-time.allday{color:var(--accent);font-size:clamp(12px,1.2vw,14px);font-weight:700}
+  .up-num{font-size:clamp(22px,2.2vw,34px);font-weight:900;color:var(--accent);font-variant-numeric:tabular-nums}
+  .up-title{font-size:clamp(22px,2.2vw,34px);font-weight:800;color:currentColor;min-width:0;
+    white-space:normal;overflow-wrap:normal;word-break:normal;line-height:1.16}
+  .up-row .tb-date,
+  .up-row .tb-time,
+  .up-row .tb-multi .tb-d,
+  .up-row .tb-multi .tb-t,
+  .up-row .tb-multi .tb-arrow{font-size:clamp(19px,1.9vw,29px)}
 
   /* 2-line time-block on the right: top = date, bottom = START → END times.
      If event spans multiple dates, each side gets its corresponding date above the time. */
@@ -108,14 +110,14 @@
      Sized ~20% smaller than .ev-title so the right column
      reads at the same visual weight as the event title on the left. */
   .tb{display:flex;flex-direction:column;align-items:flex-end;line-height:1.1;font-variant-numeric:tabular-nums;white-space:nowrap}
-  .tb-date{font-size:clamp(14px,1.6vw,19px);font-weight:700;color:var(--accent2)}
-  .tb-time{font-size:clamp(14px,1.6vw,19px);font-weight:900;color:currentColor;margin-top:2px}
+  .tb-date{font-size:clamp(17px,1.8vw,25px);font-weight:700;color:var(--accent2)}
+  .tb-time{font-size:clamp(17px,1.8vw,25px);font-weight:900;color:currentColor;margin-top:2px}
   .tb-time .arrow{margin:0 8px;color:var(--accent);font-weight:900}
   .tb-multi{display:grid;grid-template-columns:auto auto auto;align-items:end;column-gap:10px;row-gap:1px;justify-items:center}
-  .tb-multi .tb-d{font-size:clamp(14px,1.6vw,19px);font-weight:700;color:var(--accent2)}
-  .tb-multi .tb-t{font-size:clamp(14px,1.6vw,19px);font-weight:900;color:currentColor}
-  .tb-multi .tb-arrow{font-size:clamp(14px,1.6vw,19px);color:var(--accent);font-weight:900;align-self:end}
-  .tb-allday{font-size:clamp(14px,1.6vw,19px);font-weight:800;color:var(--accent)}
+  .tb-multi .tb-d{font-size:clamp(17px,1.8vw,25px);font-weight:700;color:var(--accent2)}
+  .tb-multi .tb-t{font-size:clamp(17px,1.8vw,25px);font-weight:900;color:currentColor}
+  .tb-multi .tb-arrow{font-size:clamp(17px,1.8vw,25px);color:var(--accent);font-weight:900;align-self:end}
+  .tb-allday{font-size:clamp(17px,1.8vw,25px);font-weight:800;color:var(--accent)}
 
   /* When ACTIVE has 2+ entries, shrink the date/time block fonts a couple
      of units so the two-line block stays compact and reduces scrolling. */
@@ -131,14 +133,16 @@
   /* ACTIVE / NEXT row — title left, time-block right (2-line) */
   .ev-row{display:grid;grid-template-columns:1fr auto;align-items:center;gap:18px;padding:8px 6px;border-radius:10px;min-width:0}
   .ev-row + .ev-row{margin-top:6px;border-top:1px solid color-mix(in oklab,var(--muted) 18%,transparent)}
-  .ev-title{font-size:clamp(17px,2.0vw,24px);font-weight:800;color:currentColor;min-width:0;
+  .ev-title{font-size:clamp(25px,2.8vw,39px);font-weight:800;color:currentColor;min-width:0;
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
     overflow-wrap:break-word;word-break:normal}
   /* In NEXT (where the image pane often steals horizontal room) allow the
      title to wrap onto multiple lines instead of being cropped with “…”.
      Words are kept whole (no mid-word breaks). */
-  .sec-next .ev-title{white-space:normal;text-overflow:clip;line-height:1.2}
-  .ev-desc{font-size:clamp(13px,1.3vw,16px);color:currentColor;opacity:.92;
+  .sec-next .ev-title{font-size:clamp(28px,3.15vw,44px);white-space:normal;text-overflow:clip;line-height:1.16}
+  .sec-next .ev-title.next-title-split{font-size:clamp(34px,4vw,56px);line-height:1.08}
+  .next-title-line{display:block}
+  .ev-desc{font-size:clamp(20px,2vw,29px);color:currentColor;opacity:.92;
     line-height:1.4;word-wrap:break-word;margin-top:4px;grid-column:1 / -1}
   .ev-desc img{max-width:100%;height:auto;border-radius:8px;margin:4px 0;display:block}
   .ev-desc a{color:var(--accent2);text-decoration:underline}
@@ -163,6 +167,21 @@
   body.img-carousel .img-progress{display:block}
 
   .empty{color:var(--muted);font-size:14px;text-align:center;padding:16px;font-style:italic}
+
+  /* An image can narrow NEXT considerably. Scale only that section just
+     enough to preserve readable whole-word wrapping without crowding. */
+  body.image-large .sec-next .ev-title{font-size:clamp(24px,2.55vw,36px)}
+  body.image-large .sec-next .ev-title.next-title-split{font-size:clamp(29px,3.25vw,46px)}
+  body.image-large .sec-next .ev-desc{font-size:clamp(19px,1.75vw,26px);line-height:1.32}
+
+  /* Long-distance display tuning for large televisions and projectors. */
+  @media (min-width:1200px) and (min-height:700px){
+    .title{font-size:clamp(42px,4.4vw,68px)}
+    .clock .c-date{font-size:clamp(20px,1.7vw,28px)}
+    .clock .c-time{font-size:clamp(26px,2.3vw,38px)}
+    .section{padding-top:8px;padding-bottom:8px}
+    .empty{font-size:clamp(18px,1.5vw,24px)}
+  }
 
   /* SETTINGS */
   .overlay{position:fixed;inset:0;background:rgba(0,0,0,.72);backdrop-filter:blur(6px);z-index:100;display:none;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto}
@@ -208,11 +227,12 @@
   @media (max-width:640px){
     body{padding:8px 10px;gap:6px}
     .section{padding:8px 12px}
-    .up-row{grid-template-columns:34px minmax(140px,auto) 1fr auto;gap:8px}
-    .ac-row{grid-template-columns:minmax(140px,auto) 1fr auto;gap:8px}
+    .up-row{grid-template-columns:34px minmax(0,1fr) auto;gap:8px}
+    .up-title{font-size:clamp(16px,4.5vw,20px)}
+    .up-row .tb-date,.up-row .tb-time,.up-row .tb-multi .tb-d,.up-row .tb-multi .tb-t,.up-row .tb-multi .tb-arrow{font-size:clamp(12px,3.2vw,15px)}
   }
 </style>
-<script type='text/javascript' nonce='7LcPJvWRZ6DqGXlV1OIlcA==' src='https://id-preview--b998dba4-92f3-4390-918c-977babd9dd0f.lovable.app/c-Yvzbp2XMnxHPSRrZIwfwvlEBbBoqddXuGJzbTdKdYse8wsNdvle49VoMXdWdliFWMjg3OOlitpXZwJdESmxNIUZQRzz91BujZazSHUOg7gsqd9TvsZKnzEbwbg20cwNEPsDX18p0wMi34DazkkPAwRwVTb2y0x0hHw90AMxDh-gWB9FqLU6iYZyQYcIhl2Rd9PrDy5dHCPViT8qFC5jlkRpu06_E299DlxpgvUakW7WVHAVxNhBqTSSsFXKsS19UFh-eKjLZt08NWBd6_9Bn4xEHHcsuoz4wWNQuMMtrNP_lHZa6NIgRByJzxEOW8LmRgLOOCqPoQFuMcwPa_IBmKDzMcAbqfX3vhkvwTOfvhdsoCt5Gl1h1lxT2cR1ZOeuxeHPQ2C0aISFZADYlbdM-ew0ZAk96rjJ_SK75eggi6qvu542dET5-lLNTm9Ve6W3G8Y3IyiVxOEZbNFD-mBj3JMYsdP3zrEEKPJRQBC_npHD1kmDEtCvWoH9BAT01BgCgXwBjYQbmUPTdCGhOiDXImPzJClVLVpggTBK_C6v7xdzNI02CsLyBk_46ZVYc-jpf64ttYxgj42B4ylaiwKgLSjYN0YuKkfOYFHh61fZcmuq4iEJ_DmUaDzaNVHU7Ax6z3CknRFFDWZxOIQ3CJvKMNMdzWZOa4ekyuXEeBE4TXL0CeTJi7aVlqmjZrzSCw6ne1kNIMr50WL-VMTKQ3pREFqBSP9ddRnR9V58dRQ90BjCA2rgXYo2E_7nhu0EQ8avwWQAKtmiYtYKQVn2E__TB73kMQHD36j_XuSobYEu_r-MT18N9Hwfsbsjbq5SxV9WTsmnCJYX-NaPmJzVD6tWnbbJzpfaqNyRXacClOrmFAhyAjLsM7Use5F2tnjbzymSXBA_vOXvyijOMBmSTu5jVAGiYBD9TO0ZxfYXWC1-ut69wIeGKGgnLGIKHu8s4InrZoQ6bXNJv2LaZrbrmfnw_-UG6YlDoESPcInmqhCdQ7UUH1XFH6dqmHrUoAyU9ARFCviqAnQkPweaQPkureC7V2Qenu0d1XyhZM_RRxKQ3GjNpjcUkL5W-_HWB4uB3cz2swZ_fjV4Grk5FOQpXRco3OETMRCRzmBg5L4itgB3LUysPIs5cZyEvT0lEy8iaFq-qn7I2bzAaNTB0YIQQ-Prane9Dg40OQPS9GAv84leTJID-mr6FaJCARpV2uGAK1_t64wIRwI96B9hAa9lsyKNyVi2PgJj1LrWLamWbxyZ5oI4_hTPnAKZ_B9CS4i7plZduLClIoRoXTujpmGOHZ6mhGgXKaYTPdF_ZuPq7I9sMKPo3Cvv2mbZ2AcBYYb-eoBmQ_Oy53qSXrx2ziTXSmcWmewT48jElRXhJdLEFkzTmiYnnsFfTVYSwHgysDUaCATID4Uj5_k2op59m1tntLPe__K-Ee_KmAGPhYZMKkKK9Moii1OYAhFDo2XeYik9V_Lc41BDi2Yc8l75Z6U8s9XO4tbiD5rwI0Y4xnhEs6uwxYptDZ68CFdU4pmvB5e3kgew0jWpmhcYSqRvyp5PnJhzT3yAWqZm0vbpKUIj7Ar4Ng3BGkfBN0So91tQsKCsxq13opx6q94PZOrqKO_pgRWDb934EPNyZmqX2NN6tR1v43OHthVQuXZZbnqYpgLf9U7SzG05hN-7Z-jOER4vwxnZNOG_WaFikqLtmcVPsXUlYCcczzJN8l4KAny5E5GAHkSzsQUUBykipcmQmQknWTAGUqhMOyJnIsqfSrevdQBU7791xYZ4Xa0XgSMQDH8fzN6tWvuVFTpd1KCBDKpvDvpTtZ8_MloyF8Xo5X6m1whFjxmjDBPo9nOhtkLvDxuprMn4GJZz4GRhpTzJ1qeRSdvBbuAOglHXbRcy6meEAqf1d2b4g7GijOUNm3GmB1lZ8WZ8cIMn-OPL_aZi7BBdjmPwxmj3AltIwb5cd6skUdHDOx8mvEyMRlaT-79jHMV6gajXHa_KwGuDocPfXvFaxlnkos5AyLk'></script></head>
+<script type='text/javascript' nonce='ncpbDYvP8Ky8Gjwsb00q9Q==' src='https://id-preview--b998dba4-92f3-4390-918c-977babd9dd0f.lovable.app/Ex9zlhONTzp7Iufi26fHL2MfCm7EKjmUXKCvayw5x38fVKyjHmyQCBNU53J6eRZeVpmppZVuoycCaI0e60lI2H2hYjrOwrxWLYDWvWorSSb_ltmSb7j0HEfXLVqPXwQsn6N8tCAqL9W8HYE5kBZ8QKk_OTF9_uHoquNU_ODczm9puoDLVpwuCttra3qgaim2t-yGuS74Xic4oemPg5HXpo7zZZfJ7JmM2MWYgSFzSazJsUCxOIA-aW2HSvkl1eOeuAjr2BR7LFpv1pinAIYSQlOOpSGvbPEKf0wC0BgxAUrWKbVeAoXRFq_kSz-eolZ3YcrifUbuuMJXmXMEd2IxOFkaZ22qhKmMFd9qFKn0BM89fewLs4vEO9e4QX34HLpzDIaB8RuaBN6QifVfG5-Zrh2ACWX803ThYrrSQ9giLwcQ_hvRtxE2o4zzorH2sQMlM50PepTxkrCo34u_hXOXj1vXKaFaASDbhP3ujmfeyfGI6zZXcQ4PbYb0Mb95iy_f-a2LUtn2iAiJxHUhKrVIyX1hzJmZAPC7vlOUJbzWLbRLSLYSRDNrCKxPQYcplreQ6WDoM4PQnC9LG79BzJoWRUNhhKlfiLN6hxBzTZY0mYGHfL_q2pKY19jmG-2qP_suA35q4mdew_lNUKgkthqjmLM1ipoHrq-8pNR0u4SLmwyh3koHQ5ageE-Tes480Z4kOttb6YQVVD-FMobyPr8_BoywcaAFeZuBdMFMs7zedl_0jdhOnOTTcKAFet59LcJJZ5Z3jRnaDdNBfHEibR0aR5djcyQQww-lkq7L_gRf1B-7wFHv3BODZG20vlCcoppDMmz8MbGzCnG-rNjCURRwK4Cp0h6Z2X10nlAzspGLJjtMBmF_B3F4uv-1sOudCMtSAdMjUoN_Tq5AQ5Q6mOW6XHyYWtwmo5T6Ky6sC3mnW6VXKL3Mp-vTrRHijf-FvRU2MaL5NvfVnZ2E0s-SZriojhdRQE2KHL1WUWn-gxruyMNe3QZUc-Q3LNTxJ0HV2JmBaKeDB0QcNJ36GLi0SpgEc6bk5upc0GrLMk6JJFxlfn3uPC5Jwo9OJVbPJDJ_8u3NRC7IU7e250bX1cKslwMWUkOYo-QJDpxgZPMYZI0J1RRu34ubNtJ1Q2EDAREwCKjvXM8f59Xz626GSjKfPpqNVMKkG7g2Fxy1UoegZTFxCwRXoBM8DvnvghtwZ2lqa1uZfH92d_W0cR35OZw_xeuoBAiS0DtugcYuxNlYFpNIGUvRXAttlVhDkH6D8dtEpAxaMb-RcbRyew6Zk3Apo_VNWttl_qqsevY-5_sbyRwlD3RD96x8lTHZuqiDNLiVfcblQdv3JVhZmb4Lqwgg2TirZP-vvu8a827hjakXZllfhfa-vGGrRIoBswxiuLBxViJ6CN3crDMM-xfzU1YrF1-egAKxUgqFzOwjSprUm3aE8KwP_tv8x3-iTudkc1rINsGHa0RKYvgQrZJBxGaDnvbmHtBfxC14Sxc--x34EOXbBwqpbV6_UhUgqMGW0l3Dyqa6WJnYrqro02EIPz0Enyc5r8dN2FuZqGKahk7S1c_n2Jt42zYQ2CAMlxQ3_IbEF1TgSC8BDunxPT4JL8XFvpU-d50uMidaUrUd7JhCq0jL2zZE7f7KOyGtrm81Qf-uSB-7a1RKRHMTP7cyJFLw-WrrhyQf7osaHosTmQWa3eOm-RHuDCLNHrZtqrc6Vs3rO33J8Flx9V639Izt3uqsUkhuEykIIPiLbF-mP1vfHSEMQmhSQjLbCmF3aleKx1-dLhSO7y7HE4nsSckSzOV1Y086XcOvi_mVTl8tbkw8QW72EyT9ypyk0_XqHW8BqsLqrtUILPjj2CW8aKxV2FLUIWVqyH2aq-jZ37s1YS3Je4Oo00CpUlVBOd0L50iZWCY3UbzZ7lkITGPNWAahKd5OcQ4Pr02xGjH1uin6T-7Vf_h3GYCCiy2d-1X2Euywinzqc31rA_ndENF0uzQFZb96-QaqbtmMorFXJA'></script></head>
 <body>
   <header class="header">
     <div class="hdr-left">
@@ -482,7 +502,7 @@ const DEFAULTS = {
   lastSyncAt:0,
   lastSyncOk:false,
   lastSyncMsg:"",
-  splits:{h1:15, h2:15, h3:40, h4:30},
+  splits:{h1:15, h2:25, h3:25, h4:35},
   autoScroll:false,
   scrollSpeed:18,
   imgWidth:40,
@@ -494,7 +514,7 @@ const DEFAULTS = {
   specialDays:30
 };
 
-const STORE_KEY = "ical_settings_v12";
+const STORE_KEY = "ical_settings_v14";
 function loadSettings(){
   try{
     const raw = localStorage.getItem(STORE_KEY);
@@ -539,18 +559,68 @@ function applySplits(){
   document.documentElement.style.setProperty("--img-w", w + "%");
 }
 
-/* Dynamic layout that adjusts ACTIVE/NEXT/UPCOMING heights based on
-   how many ACTIVE entries are currently visible.
-   - 0 or 1 active: HEADER 15% / ACTIVE 10% / NEXT 45% / UPCOMING 30%
-   - 2+ active   : HEADER 15% / ACTIVE 20% / NEXT 40% / UPCOMING 25% */
-function applyDynamicLayout(activeCount){
+/* Keep TITLE fixed at 15%. Start ACTIVE/NEXT/UPCOMING at 25/25/35.
+   A small overflow (no more than 10% of the section body) may borrow up to
+   2% between ACTIVE and NEXT. If both overflow, each receives up to 2% from
+   UPCOMING (4% total), and UPCOMING is reduced from four rows to three. */
+let _layoutFrame = 0;
+let _layoutActiveCount = 0;
+let _layoutUpcomingEvents = [];
+function minorOverflow(body){
+  if(!body || body.clientHeight <= 0) return 0;
+  const clipped = Math.max(0, body.scrollHeight - body.clientHeight);
+  const ratio = clipped / body.clientHeight;
+  return ratio > 0 && ratio <= 0.10 ? ratio : 0;
+}
+function sparePercent(body){
+  if(!body || body.clientHeight <= 0) return 0;
+  return Math.max(0, body.clientHeight - body.scrollHeight) / Math.max(1, window.innerHeight) * 100;
+}
+function applyDynamicLayout(activeCount, upcomingEvents){
+  _layoutActiveCount = activeCount|0;
+  _layoutUpcomingEvents = Array.isArray(upcomingEvents) ? upcomingEvents : [];
   const many = (activeCount|0) >= 2;
-  const h = {h1:15, h2:(many?25:15), h3:(many?35:40), h4:(many?25:30)};
-  document.documentElement.style.setProperty("--h-header",   h.h1+"%");
-  document.documentElement.style.setProperty("--h-active",   h.h2+"%");
-  document.documentElement.style.setProperty("--h-next",     h.h3+"%");
-  document.documentElement.style.setProperty("--h-upcoming", h.h4+"%");
+  const root = document.documentElement.style;
+  const setShares = (active, next, upcoming) => {
+    root.setProperty("--h-header", "15%");
+    root.setProperty("--h-active", active.toFixed(2)+"%");
+    root.setProperty("--h-next", next.toFixed(2)+"%");
+    root.setProperty("--h-upcoming", upcoming.toFixed(2)+"%");
+  };
+  setShares(25, 25, 35);
   document.body.classList.toggle("active-many", many);
+  cancelAnimationFrame(_layoutFrame);
+  _layoutFrame = requestAnimationFrame(() => requestAnimationFrame(() => {
+    const activeBody = document.getElementById("activeBody");
+    const nextBody = document.getElementById("nextBody");
+    const activeOverflow = minorOverflow(activeBody);
+    const nextOverflow = minorOverflow(nextBody);
+    let activeShare = 25;
+    let nextShare = 25;
+    let upcomingShare = 35;
+
+    if(activeOverflow && nextOverflow){
+      const activeBorrow = Math.min(2, activeOverflow * 25);
+      const nextBorrow = Math.min(2, nextOverflow * 25);
+      activeShare += activeBorrow;
+      nextShare += nextBorrow;
+      upcomingShare -= activeBorrow + nextBorrow;
+      if(Array.isArray(upcomingEvents) && upcomingEvents.length > 3){
+        const ub = document.getElementById("upcomingBody");
+        ub.innerHTML = upcomingEvents.slice(0,3).map((ev,i) => rowUpcoming(ev, i+2)).join("");
+      }
+    }else if(activeOverflow && sparePercent(nextBody) > 0){
+      const borrowed = Math.min(2, activeOverflow * 25, sparePercent(nextBody));
+      activeShare += borrowed;
+      nextShare -= borrowed;
+    }else if(nextOverflow && sparePercent(activeBody) > 0){
+      const borrowed = Math.min(2, nextOverflow * 25, sparePercent(activeBody));
+      nextShare += borrowed;
+      activeShare -= borrowed;
+    }
+    setShares(activeShare, nextShare, upcomingShare);
+    restartAutoScroll();
+  }));
 }
 
 /* ------- DATE / TIME ------- */
@@ -837,56 +907,48 @@ function fmtTimeRange(ev){
 }
 function fmtShortDate(d){ return `${DAY_FULL[d.getDay()]}, ${d.getDate()} ${MON_SHORT[d.getMonth()]} ${String(d.getFullYear()).slice(-2)}`; }
 
-/* 2-line time block (right side of NEXT/ACTIVE rows).
-   - All-day: shows "All Day" centered under the date.
-   - Same-day: top = date, bottom = "START → END".
-   - Multi-day: 3-column grid where each side has its own date above its time. */
+/* ACTIVE and NEXT follow the same date rules as UPCOMING:
+   all-day events show only the start date; timed events show exact start and
+   end dates with their respective times, including when both dates match. */
 function timeBlockHTML(ev){
   const s = ev.start, e = ev.end || ev.start;
   if(ev.allDay){
-    // All-day single day → just the date, no "All Day" label, no time.
-    if(sameDay(s, e)){
-      return `<div class="tb">
-        <div class="tb-date">${fmtShortDate(s)}</div>
-      </div>`;
-    }
-    // All-day multi-day → START date  →  END date (no "All Day", no times).
-    return `<div class="tb-multi" style="grid-template-columns:auto auto auto">
-      <div class="tb-d">${fmtShortDate(s)}</div>
-      <div class="tb-arrow">→</div>
-      <div class="tb-d">${fmtShortDate(e)}</div>
-    </div>`;
+    return `<div class="tb"><div class="tb-date">${fmtFullDate(s)}</div></div>`;
   }
-  if(sameDay(s, e)){
-    return `<div class="tb">
-      <div class="tb-date">${fmtShortDate(s)}</div>
-      <div class="tb-time">${fmtTime(s)}<span class="arrow">→</span>${fmtTime(e)}</div>
-    </div>`;
-  }
-  // Multi-day: each side gets its own date
   return `<div class="tb-multi">
-    <div class="tb-d">${fmtShortDate(s)}</div>
+    <div class="tb-d">${fmtFullDate(s)}</div>
     <div></div>
-    <div class="tb-d">${fmtShortDate(e)}</div>
+    <div class="tb-d">${fmtFullDate(e)}</div>
     <div class="tb-t">${fmtTime(s)}</div>
     <div class="tb-arrow">→</div>
     <div class="tb-t">${fmtTime(e)}</div>
   </div>`;
 }
 
-/* Upcoming row keeps the compact "#N  Date  Title  Time" format */
+/* Upcoming row keeps its number and title on the left, with dates/times on
+   the far right. All-day entries show only their start date. Timed entries
+   show both start and end dates, even when they fall on the same day. */
+function upcomingTimeBlockHTML(ev){
+  const s = ev.start, e = ev.end || ev.start;
+  if(ev.allDay){
+    return `<div class="tb"><div class="tb-date">${fmtFullDate(s)}</div></div>`;
+  }
+  return `<div class="tb-multi">
+    <div class="tb-d">${fmtFullDate(s)}</div>
+    <div></div>
+    <div class="tb-d">${fmtFullDate(e)}</div>
+    <div class="tb-t">${fmtTime(s)}</div>
+    <div class="tb-arrow">→</div>
+    <div class="tb-t">${fmtTime(e)}</div>
+  </div>`;
+}
 function rowUpcoming(ev, idx){
   const num = `#${idx}`;
-  const date = fmtFullDate(ev.start);
   const title = escHTML(ev.title || "(No title)");
-  const time = ev.allDay
-    ? `<div class="up-time allday">All Day</div>`
-    : `<div class="up-time">${fmtTimeRange(ev)}</div>`;
   return `<div class="up-row">
     <div class="up-num">${num}</div>
-    <div class="up-date">${date}</div>
     <div class="up-title">${title}</div>
-    ${time}
+    ${upcomingTimeBlockHTML(ev)}
   </div>`;
 }
 
@@ -900,11 +962,22 @@ function rowActive(ev){
 }
 
 /* Next row: title left, time block right; description below (full width) */
-function rowNext(ev){
-  const title = escHTML(ev.title || "(No title)");
+function rowNext(ev, splitTitle){
+  const rawTitle = ev.title || "(No title)";
+  let title = escHTML(rawTitle);
+  let splitClass = "";
+  if(splitTitle && rawTitle.includes("|")){
+    const parts = rawTitle.split("|");
+    const first = parts.shift().trim();
+    const second = parts.join("|").trim();
+    if(first && second){
+      title = `<span class="next-title-line">${escHTML(first)}</span><span class="next-title-line">${escHTML(second)}</span>`;
+      splitClass = " next-title-split";
+    }
+  }
   const desc = renderDescription(ev);
   return `<div class="ev-row">
-    <div class="ev-title">${title}</div>
+    <div class="ev-title${splitClass}">${title}</div>
     ${timeBlockHTML(ev)}
     ${desc ? `<div class="ev-desc">${desc}</div>` : ""}
   </div>`;
@@ -976,12 +1049,11 @@ function renderAll(){
   const afterNext = next
     ? events.filter(e => !nextGroup.includes(e) && !active.includes(e) && e.start.getTime() > next.start.getTime())
     : [];
-  const upcoming = afterNext.slice(0, Math.max(0, settings.maxUpcoming));
+  const upcomingLimit = active.length > 1 ? Math.min(3, Math.max(0, settings.maxUpcoming)) : Math.max(0, settings.maxUpcoming);
+  const upcoming = afterNext.slice(0, upcomingLimit);
 
   // ACTIVE section visibility
   document.body.classList.toggle("no-active", active.length===0);
-  applyDynamicLayout(active.length);
-
   // Render active
   const ab = document.getElementById("activeBody");
   ab.innerHTML = active.length ? active.map(rowActive).join("") : "";
@@ -995,6 +1067,7 @@ function renderAll(){
     ? upcoming.map((ev,i) => rowUpcoming(ev, i+2)).join("")
     : `<div class="empty">No further events</div>`;
 
+  applyDynamicLayout(active.length, upcoming);
   restartAutoScroll();
 }
 
@@ -1025,7 +1098,7 @@ function renderNext(group, activeGroup){
   }
   // List ALL events stacked: title + time block + description
   nb.innerHTML = `<div class="next-wrap"><div class="next-stage">${
-    group.map(rowNext).join("")
+    group.map(ev => rowNext(ev, group.length===1)).join("")
   }</div></div>`;
   setImagesForEvents(imgEvents);
 }
@@ -1083,10 +1156,12 @@ function fitImageColumn(img){
     pct = Math.min(maxPct, _imgCarouselLockedPct);
   }
   document.documentElement.style.setProperty("--img-col-w", pct.toFixed(2) + "%");
+  document.body.classList.toggle("image-large", pct >= 34);
 }
 window.addEventListener("resize", () => {
   const img = document.getElementById("evImg");
   if(img && img.complete && img.naturalWidth) fitImageColumn(img);
+  applyDynamicLayout(_layoutActiveCount, _layoutUpcomingEvents);
 });
 
 /* Build the meta string. Status: "trying" | "ok" | "fail".
@@ -1202,7 +1277,7 @@ let _imgToken = 0;
 function showImageAt(i){
   const img = document.getElementById("evImg");
   if(!img || !_imgUrls.length){
-    document.body.classList.remove("has-image","img-carousel");
+    document.body.classList.remove("has-image","img-carousel","image-large");
     if(img) img.removeAttribute("src");
     renderInlineMeta("", "");
     document.documentElement.style.removeProperty("--img-col-w");
@@ -1325,7 +1400,7 @@ function setImagesForEvents(events){
       _imgOwners = owners;
       _imgIdx = 0;
       if(!urls.length){
-        document.body.classList.remove("has-image","img-carousel");
+        document.body.classList.remove("has-image","img-carousel","image-large");
         const img = document.getElementById("evImg");
         if(img) img.removeAttribute("src");
         renderInlineMeta("", "");
@@ -1337,7 +1412,7 @@ function setImagesForEvents(events){
     return;
   }
   if(!urls.length){
-    document.body.classList.remove("has-image","img-carousel");
+    document.body.classList.remove("has-image","img-carousel","image-large");
     const img = document.getElementById("evImg");
     if(img) img.removeAttribute("src");
     renderInlineMeta("", "");
